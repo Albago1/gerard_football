@@ -56,8 +56,8 @@ const CATEGORIES: Category[] = [
         title: "Right-foot finish",
         description: "Clean strike into the far corner from inside the box.",
         duration: "0:18",
-        // REPLACE: videoUrl: "https://youtu.be/YOUR_ID",
-        // REPLACE: thumbnailUrl: "/thumbnails/goal-01.jpg",
+        videoUrl: "/videos/goal-01.mov",
+        thumbnailUrl: "/thumbnails/goal-01.jpg",
       },
       {
         id: "goal-02",
