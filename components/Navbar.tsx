@@ -1,17 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useLang, type Lang } from "@/lib/i18n";
 
-const navLinks = [
-  { label: "Profile", href: "#about" },
-  { label: "Strengths", href: "#strengths" },
-  { label: "Videos", href: "#videos" },
-  { label: "Contact", href: "#contact" },
-];
+const navHrefs = ["#about", "#strengths", "#videos", "#contact"] as const;
 
 export default function Navbar() {
+  const { lang, setLang, t } = useLang();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const navLinks = [
+    { label: t.nav.profile,   href: "#about" },
+    { label: t.nav.strengths, href: "#strengths" },
+    { label: t.nav.videos,    href: "#videos" },
+    { label: t.nav.contact,   href: "#contact" },
+  ];
+
+  const otherLang: Lang = lang === "en" ? "de" : "en";
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -61,12 +67,24 @@ export default function Navbar() {
           </nav>
 
           <div className="flex items-center gap-3">
+            {/* Language switcher */}
+            <button
+              type="button"
+              onClick={() => setLang(otherLang)}
+              className="text-zinc-500 hover:text-white text-[11px] font-bold uppercase tracking-[0.15em] transition-colors duration-200 flex items-center gap-1"
+              aria-label={`Switch to ${otherLang === "en" ? "English" : "Deutsch"}`}
+            >
+              <span className={lang === "de" ? "text-white" : ""}>DE</span>
+              <span className="text-zinc-700">|</span>
+              <span className={lang === "en" ? "text-white" : ""}>EN</span>
+            </button>
+
             {/* Desktop CTA */}
             <a
               href="#contact"
               className="hidden md:block bg-[#e11d48] hover:bg-[#be123c] text-white text-xs font-bold px-5 py-2.5 uppercase tracking-[0.15em] transition-colors duration-200"
             >
-              Request Trial
+              {t.nav.requestTrial}
             </a>
 
             {/* Mobile hamburger */}
@@ -123,7 +141,7 @@ export default function Navbar() {
               onClick={close}
               className="mt-4 bg-[#e11d48] hover:bg-[#be123c] text-white text-xs font-bold px-5 py-3 uppercase tracking-[0.15em] transition-colors duration-200 text-center"
             >
-              Request Trial
+              {t.nav.requestTrial}
             </a>
           </nav>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { CATEGORIES } from "@/lib/categories";
+import { useLang, type Translations } from "@/lib/i18n";
 import type { Clip } from "@/lib/clips-store";
 
 // ── Embed resolver ────────────────────────────────────────────────────────────
@@ -43,7 +44,13 @@ function isYouTubeUrl(url: string) {
 
 // ── Category type used only in this file ─────────────────────────────────────
 
-type CategoryWithClips = (typeof CATEGORIES)[number] & { clips: Clip[] };
+type CategoryWithClips = {
+  id: string;
+  label: string;
+  title: string;
+  description: string;
+  clips: Clip[];
+};
 
 // ── Clip Modal ────────────────────────────────────────────────────────────────
 
@@ -237,9 +244,7 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
           ))}
         </div>
 
-        <p className="text-zinc-800 text-[10px] uppercase tracking-widest mt-3 sm:hidden">
-          Swipe to navigate
-        </p>
+        <SwipeHint />
       </div>
 
       {/* Arrow nav */}
@@ -292,6 +297,15 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
         </svg>
       </button>
     </div>
+  );
+}
+
+function SwipeHint() {
+  const { t } = useLang();
+  return (
+    <p className="text-zinc-800 text-[10px] uppercase tracking-widest mt-3 sm:hidden">
+      {t.videos.swipeHint}
+    </p>
   );
 }
 
@@ -518,6 +532,8 @@ function ReelRow({
 // ── Main Export ───────────────────────────────────────────────────────────────
 
 export default function VideoLibrary() {
+  const { t } = useLang();
+  const v = t.videos;
   const [clips, setClips] = useState<Clip[]>([]);
   const [modal, setModal] = useState<{
     categoryIndex: number;
@@ -533,12 +549,18 @@ export default function VideoLibrary() {
       .catch(() => {});
   }, []);
 
-  const categoriesWithClips: CategoryWithClips[] = CATEGORIES.map((cat) => ({
-    ...cat,
-    clips: clips
-      .filter((c) => c.category === cat.id)
-      .sort((a, b) => a.order - b.order),
-  }));
+  const categoriesWithClips: CategoryWithClips[] = CATEGORIES.map((cat) => {
+    const catT = t.categories[cat.id as keyof Translations["categories"]];
+    return {
+      id: cat.id,
+      label: catT.label,
+      title: catT.title,
+      description: catT.description,
+      clips: clips
+        .filter((c) => c.category === cat.id)
+        .sort((a, b) => a.order - b.order),
+    };
+  });
 
   const openClip = useCallback((categoryIndex: number, clipIndex: number) => {
     setModal({ categoryIndex, clipIndex });
@@ -562,7 +584,7 @@ export default function VideoLibrary() {
           <div className="flex items-center gap-4 mb-6">
             <div className="w-6 h-px bg-[#e11d48]" />
             <span className="text-zinc-500 text-xs font-semibold tracking-[0.25em] uppercase">
-              Video Library
+              {v.eyebrow}
             </span>
           </div>
           <h2
@@ -570,18 +592,17 @@ export default function VideoLibrary() {
             className="font-heading font-black text-white uppercase leading-none mb-4"
             style={{ fontSize: "clamp(2.5rem, 5vw, 4rem)" }}
           >
-            Footage
+            {v.heading}
           </h2>
           <div className="flex flex-wrap items-center gap-4 sm:gap-8">
             <p className="text-zinc-500 text-base max-w-md leading-relaxed">
-              Browse by category. Tap any clip to open the viewer. Swipe or use
-              arrow keys to move between clips.
+              {v.description}
             </p>
             <a
               href="#contact"
               className="flex items-center gap-2 text-[#e11d48] text-xs font-bold uppercase tracking-[0.15em] hover:text-white transition-colors duration-200 shrink-0"
             >
-              Request full match footage
+              {v.requestLink}
               <svg
                 width="10"
                 height="10"
@@ -613,19 +634,14 @@ export default function VideoLibrary() {
         <div className="max-w-6xl mx-auto px-5 sm:px-8 mt-10">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 p-6 border border-[#1e1e1e] bg-[#0d0d0d]">
             <div>
-              <p className="text-white font-semibold text-sm mb-1">
-                Want more footage before deciding?
-              </p>
-              <p className="text-zinc-500 text-sm leading-relaxed">
-                Full 90-minute match footage, training clips, and set-piece
-                situations available immediately on request.
-              </p>
+              <p className="text-white font-semibold text-sm mb-1">{v.footerTitle}</p>
+              <p className="text-zinc-500 text-sm leading-relaxed">{v.footerDesc}</p>
             </div>
             <a
               href="#contact"
               className="shrink-0 bg-[#e11d48] hover:bg-[#be123c] text-white text-xs font-bold px-6 py-3 uppercase tracking-[0.15em] transition-colors duration-200"
             >
-              Request Footage
+              {v.footerBtn}
             </a>
           </div>
         </div>
