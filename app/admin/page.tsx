@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 export default async function AdminPage() {
   const store = await cookies();
   const isAuthed =
+    !!process.env.ADMIN_PASSWORD &&
     store.get("admin_token")?.value === process.env.ADMIN_PASSWORD;
 
   return (

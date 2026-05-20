@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 export async function POST(request: Request) {
   const store = await cookies();
   const isAuthed =
+    !!process.env.ADMIN_PASSWORD &&
     store.get("admin_token")?.value === process.env.ADMIN_PASSWORD;
 
   const body = (await request.json()) as HandleUploadBody;
