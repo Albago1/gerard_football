@@ -753,6 +753,26 @@ export default function VideoLibrary() {
     clipIndex: number;
   } | null>(null);
 
+  const [clipMap, setClipMap] = useState<
+    Record<string, { videoUrl?: string; thumbnailUrl?: string }>
+  >({});
+
+  useEffect(() => {
+    fetch("/api/clips")
+      .then((r) => r.json())
+      .then(setClipMap)
+      .catch(() => {});
+  }, []);
+
+  const resolvedCategories = CATEGORIES.map((cat) => ({
+    ...cat,
+    clips: cat.clips.map((clip) => ({
+      ...clip,
+      videoUrl: clipMap[clip.id]?.videoUrl ?? clip.videoUrl,
+      thumbnailUrl: clipMap[clip.id]?.thumbnailUrl ?? clip.thumbnailUrl,
+    })),
+  }));
+
   const openClip = useCallback((categoryIndex: number, clipIndex: number) => {
     setModal({ categoryIndex, clipIndex });
   }, []);
@@ -816,7 +836,7 @@ export default function VideoLibrary() {
         <div className="border-t border-[#111] mb-12" />
 
         {/* Category rows */}
-        {CATEGORIES.map((category, categoryIndex) => (
+        {resolvedCategories.map((category, categoryIndex) => (
           <ReelRow
             key={category.id}
             category={category}
@@ -849,7 +869,7 @@ export default function VideoLibrary() {
       {/* Modal — rendered outside the section so it overlays everything */}
       {modal !== null && (
         <ClipModal
-          category={CATEGORIES[modal.categoryIndex]}
+          category={resolvedCategories[modal.categoryIndex]}
           clipIndex={modal.clipIndex}
           onClose={closeModal}
           onNavigate={navigate}
