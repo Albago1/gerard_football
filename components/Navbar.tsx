@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useLang, type Lang } from "@/lib/i18n";
 
-const navHrefs = ["#about", "#strengths", "#videos", "#contact"] as const;
+const navHrefs = ["#profile", "#strengths", "#videos", "#contact"] as const;
 
 export default function Navbar() {
   const { lang, setLang, t } = useLang();
@@ -11,7 +11,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navLinks = [
-    { label: t.nav.profile,   href: "#about" },
+    { label: t.nav.profile,   href: "#profile" },
     { label: t.nav.strengths, href: "#strengths" },
     { label: t.nav.videos,    href: "#videos" },
     { label: t.nav.contact,   href: "#contact" },

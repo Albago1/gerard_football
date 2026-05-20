@@ -1,8 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import HeroReel from "@/components/HeroReel";
-import PlayerSnapshot from "@/components/PlayerSnapshot";
-import About from "@/components/About";
+import PlayerProfile from "@/components/PlayerProfile";
 import WhyInvite from "@/components/WhyInvite";
 import Strengths from "@/components/Strengths";
 import VideoLibrary from "@/components/VideoLibrary";
@@ -18,8 +17,7 @@ export default function Home() {
       <main>
         <Hero />
         <HeroReel />
-        <PlayerSnapshot />
-        <About />
+        <PlayerProfile />
         <WhyInvite />
         <Strengths />
         <VideoLibrary />
