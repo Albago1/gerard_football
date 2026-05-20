@@ -70,6 +70,12 @@ export const translations = {
       cta2: "Give him one session on the pitch.",
       ctaBtn: "Arrange a Trial",
     },
+    heroReel: {
+      eyebrow: "Best Highlights",
+      heading: "Watch the Reel",
+      cta: "Browse all footage",
+      noClips: "Clips coming soon",
+    },
     trial: {
       eyebrow: "The Proposition",
       quote: '"I only need one chance\nto show my level."',
@@ -166,6 +172,12 @@ export const translations = {
       cta1: "Genug gesehen?",
       cta2: "Gebt ihm eine Session auf dem Platz.",
       ctaBtn: "Probetraining vereinbaren",
+    },
+    heroReel: {
+      eyebrow: "Beste Highlights",
+      heading: "Den Reel ansehen",
+      cta: "Alle Videos durchsuchen",
+      noClips: "Clips folgen in Kürze",
     },
     trial: {
       eyebrow: "Das Angebot",

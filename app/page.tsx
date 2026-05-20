@@ -1,5 +1,6 @@
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
+import HeroReel from "@/components/HeroReel";
 import PlayerSnapshot from "@/components/PlayerSnapshot";
 import About from "@/components/About";
 import WhyInvite from "@/components/WhyInvite";
@@ -16,6 +17,7 @@ export default function Home() {
       <Navbar />
       <main>
         <Hero />
+        <HeroReel />
         <PlayerSnapshot />
         <About />
         <WhyInvite />
