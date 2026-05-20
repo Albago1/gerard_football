@@ -630,21 +630,6 @@ export default function VideoLibrary() {
           />
         ))}
 
-        {/* Footer CTA */}
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 mt-10">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 p-6 border border-[#1e1e1e] bg-[#0d0d0d]">
-            <div>
-              <p className="text-white font-semibold text-sm mb-1">{v.footerTitle}</p>
-              <p className="text-zinc-500 text-sm leading-relaxed">{v.footerDesc}</p>
-            </div>
-            <a
-              href="#contact"
-              className="shrink-0 bg-[#e11d48] hover:bg-[#be123c] text-white text-xs font-bold px-6 py-3 uppercase tracking-[0.15em] transition-colors duration-200"
-            >
-              {v.footerBtn}
-            </a>
-          </div>
-        </div>
       </section>
 
       {modal !== null && (
