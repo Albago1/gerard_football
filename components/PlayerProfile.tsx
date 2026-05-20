@@ -70,50 +70,36 @@ export default function PlayerProfile() {
           <div className="mt-6 w-10 h-1 bg-[#e11d48]" />
         </div>
 
-        {/* Bio + Stats grid side by side on desktop */}
-        <div className="grid lg:grid-cols-[1fr_360px] gap-12 lg:gap-20 items-start">
-
-          {/* Bio paragraphs */}
-          <div className="space-y-5 text-zinc-400 text-base sm:text-[1.05rem] leading-relaxed">
-            <p>{p.p1}</p>
-            <p>{p.p2}</p>
-            <p>{p.p3}</p>
-            <blockquote className="text-zinc-200 font-medium border-l-2 border-[#e11d48] pl-4 mt-6 not-italic">
-              {p.quote}
-            </blockquote>
+        {/* Stats grid — full width, 4 columns */}
+        <div className="mb-16">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-4 h-px bg-[#e11d48]" />
+            <span className="text-zinc-500 text-[10px] font-semibold tracking-[0.25em] uppercase">
+              {p.statsEyebrow}
+            </span>
           </div>
-
-          {/* Stats */}
-          <div>
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-4 h-px bg-[#e11d48]" />
-              <span className="text-zinc-500 text-[10px] font-semibold tracking-[0.25em] uppercase">
-                {p.statsEyebrow}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-px bg-[#1e1e1e]">
-              {stats.map(({ label, value, accent }) => (
-                <div
-                  key={label}
-                  className="bg-[#0d0d0d] hover:bg-[#121212] transition-colors duration-200 p-4 sm:p-5"
-                >
-                  <div className="text-zinc-600 text-[10px] font-semibold tracking-[0.2em] uppercase mb-2">
-                    {label}
-                  </div>
-                  <div className="font-heading font-bold text-white text-lg sm:text-xl leading-tight">
-                    {value}
-                  </div>
-                  {accent && (
-                    <div className="text-[#e11d48] text-xs font-bold mt-1 tracking-wide">{accent}</div>
-                  )}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-[#1e1e1e]">
+            {stats.map(({ label, value, accent }) => (
+              <div
+                key={label}
+                className="bg-[#0d0d0d] hover:bg-[#121212] transition-colors duration-200 p-5 sm:p-6"
+              >
+                <div className="text-zinc-600 text-[10px] font-semibold tracking-[0.2em] uppercase mb-2">
+                  {label}
                 </div>
-              ))}
-            </div>
+                <div className="font-heading font-bold text-white text-xl sm:text-2xl leading-tight">
+                  {value}
+                </div>
+                {accent && (
+                  <div className="text-[#e11d48] text-xs font-bold mt-1 tracking-wide">{accent}</div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Career History */}
-        <div className="mt-20 pt-16 border-t border-[#161616]">
+        <div className="mb-16 pb-16 border-b border-[#161616]">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-4 h-px bg-[#e11d48]" />
             <span className="text-zinc-500 text-[10px] font-semibold tracking-[0.25em] uppercase">
@@ -153,6 +139,16 @@ export default function PlayerProfile() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Bio paragraphs */}
+        <div className="space-y-5 text-zinc-400 text-base sm:text-[1.05rem] leading-relaxed max-w-3xl">
+          <p>{p.p1}</p>
+          <p>{p.p2}</p>
+          <p>{p.p3}</p>
+          <blockquote className="text-zinc-200 font-medium border-l-2 border-[#e11d48] pl-4 mt-6 not-italic">
+            {p.quote}
+          </blockquote>
         </div>
 
       </div>
