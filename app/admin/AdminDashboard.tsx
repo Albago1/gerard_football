@@ -584,14 +584,25 @@ export default function AdminDashboard() {
             Video Dashboard
           </h1>
         </div>
-        <form action={logout}>
-          <button
-            type="submit"
-            className="text-zinc-600 hover:text-white text-xs uppercase tracking-widest transition-colors"
+        <div className="flex items-center gap-4">
+          <a
+            href="/"
+            className="flex items-center gap-1.5 text-zinc-600 hover:text-white text-xs uppercase tracking-widest transition-colors"
           >
-            Log out
-          </button>
-        </form>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            Main page
+          </a>
+          <form action={logout}>
+            <button
+              type="submit"
+              className="text-zinc-600 hover:text-white text-xs uppercase tracking-widest transition-colors"
+            >
+              Log out
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* Category tabs */}
