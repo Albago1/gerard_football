@@ -111,9 +111,7 @@ export const translations = {
       goals:    { label: "Finishing",    title: "Goals",                    description: "Finishing from range, tight angles, and 1v1 with the keeper." },
       assists:  { label: "Creativity",   title: "Assists & Chance Creation", description: "Link-up play, through balls, and created scoring opportunities." },
       dribbling:{ label: "Technical",    title: "Dribbling & 1v1",          description: "Taking on defenders, using pace and technique in tight spaces." },
-      movement: { label: "Intelligence", title: "Runs & Movement",          description: "Off-the-ball positioning, runs in behind, and channel work." },
       pressing: { label: "Work Rate",    title: "Pressing & Defensive Work",description: "Press triggers, ball recoveries, and defensive contribution." },
-      physical: { label: "Athleticism",  title: "Physical Actions",         description: "Aerial duels, strength in challenges, and physical dominance." },
     },
     contact: {
       eyebrow: "Get in Touch",
@@ -228,9 +226,7 @@ export const translations = {
       goals:    { label: "Abschluss",   title: "Tore",                      description: "Abschlüsse aus der Distanz, engen Winkeln und 1v1 mit dem Torwart." },
       assists:  { label: "Kreativität", title: "Vorlagen & Chancen",         description: "Kombinationsspiel, Steilpässe und kreierte Torchancen." },
       dribbling:{ label: "Technik",     title: "Dribbling & 1v1",           description: "Verteidiger überwinden, Tempo und Technik in engen Räumen." },
-      movement: { label: "Intelligenz", title: "Läufe & Bewegung",          description: "Positionierung ohne Ball, Tiefenläufe und Kanalarbeit." },
       pressing: { label: "Arbeitsrate", title: "Pressing & Defensivarbeit", description: "Pressingauslöser, Ballrückgewinne und defensiver Beitrag." },
-      physical: { label: "Athletik",    title: "Physische Aktionen",        description: "Kopfballduelle, Stärke in Zweikämpfen und physische Dominanz." },
     },
     contact: {
       eyebrow: "Kontakt aufnehmen",

@@ -21,22 +21,10 @@ export const CATEGORIES = [
     description: "Taking on defenders, using pace and technique in tight spaces.",
   },
   {
-    id: "movement",
-    label: "Intelligence",
-    title: "Runs & Movement",
-    description: "Off-the-ball positioning, runs in behind, and channel work.",
-  },
-  {
     id: "pressing",
     label: "Work Rate",
     title: "Pressing & Defensive Work",
     description: "Press triggers, ball recoveries, and defensive contribution.",
-  },
-  {
-    id: "physical",
-    label: "Athleticism",
-    title: "Physical Actions",
-    description: "Aerial duels, strength in challenges, and physical dominance.",
   },
 ] as const;
 
