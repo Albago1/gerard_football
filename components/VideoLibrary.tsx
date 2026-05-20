@@ -1,268 +1,34 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { CATEGORIES } from "@/lib/categories";
+import type { Clip } from "@/lib/clips-store";
 
-// ═══════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════
+// ── Embed resolver ────────────────────────────────────────────────────────────
 
-type Clip = {
-  id: string;
-  title: string;
-  description: string;
-  duration?: string;
-  /**
-   * REPLACE: Set this to your video URL for each clip.
-   * Supported formats:
-   *   YouTube short:    "https://youtu.be/VIDEO_ID"
-   *   YouTube full:     "https://www.youtube.com/watch?v=VIDEO_ID"
-   *   YouTube Shorts:   "https://www.youtube.com/shorts/VIDEO_ID"
-   *   Vimeo:            "https://vimeo.com/VIDEO_ID"
-   *   Google Drive:     "https://drive.google.com/file/d/FILE_ID/view"
-   *   Direct .mp4:      "https://example.com/clip.mp4"
-   */
-  videoUrl?: string;
-  /**
-   * REPLACE: Optional thumbnail image shown on the card.
-   * Put the image in /public/thumbnails/ and reference as "/thumbnails/name.jpg"
-   */
-  thumbnailUrl?: string;
-};
-
-type Category = {
-  id: string;
-  label: string;
-  title: string;
-  description: string;
-  clips: Clip[];
-};
-
-// ═══════════════════════════════════════════════════
-// CLIP DATA
-// Add your videoUrl (and optionally thumbnailUrl) to
-// each clip below. Each category can hold 3–6 clips.
-// ═══════════════════════════════════════════════════
-
-const CATEGORIES: Category[] = [
-  {
-    id: "goals",
-    label: "Finishing",
-    title: "Goals",
-    description:
-      "Finishing from range, tight angles, and 1v1 with the keeper.",
-    clips: [
-      {
-        id: "goal-01",
-        title: "Right-foot finish",
-        description: "Clean strike into the far corner from inside the box.",
-        duration: "0:18",
-        videoUrl: "/videos/goal-01.mov",
-        thumbnailUrl: "/thumbnails/goal-01.jpg",
-      },
-      {
-        id: "goal-02",
-        title: "1v1 with goalkeeper",
-        description: "Composed finish after breaking the defensive line.",
-        duration: "0:12",
-        videoUrl: "/videos/goal-02.mov",
-        thumbnailUrl: "/thumbnails/goal-02.jpg",
-      },
-      {
-        id: "goal-03",
-        title: "Left-foot finish",
-        description: "Cut inside from the left and finished low near post.",
-        duration: "0:15",
-        videoUrl: "/videos/goal-03.mov",
-        thumbnailUrl: "/thumbnails/goal-03.jpg",
-      },
-      {
-        id: "goal-04",
-        title: "Header at far post",
-        description: "Attacked the cross from a wide position.",
-        duration: "0:20",
-        videoUrl: "/videos/goal-04.mov",
-        thumbnailUrl: "/thumbnails/goal-04.jpg",
-      },
-    ],
-  },
-  {
-    id: "assists",
-    label: "Creativity",
-    title: "Assists & Chance Creation",
-    description:
-      "Link-up play, through balls, and created scoring opportunities.",
-    clips: [
-      {
-        id: "assist-01",
-        title: "Through ball assist",
-        description: "Spotted the run in behind and weighted the pass perfectly.",
-        duration: "0:14",
-        videoUrl: "/videos/assist-01.mov",
-        thumbnailUrl: "/thumbnails/assist-01.jpg",
-      },
-      {
-        id: "assist-02",
-        title: "Cut-back assist",
-        description: "Beat the fullback and cut back for a tap-in.",
-        duration: "0:11",
-        videoUrl: "/videos/assist-02.mov",
-        thumbnailUrl: "/thumbnails/assist-02.jpg",
-      },
-      {
-        id: "assist-03",
-        title: "Hold-up and lay-off",
-        description: "Held the ball under pressure and created a shooting chance.",
-        duration: "0:16",
-        videoUrl: "/videos/assist-03.mov",
-        thumbnailUrl: "/thumbnails/assist-03.jpg",
-      },
-    ],
-  },
-  {
-    id: "dribbling",
-    label: "Technical",
-    title: "Dribbling & 1v1",
-    description:
-      "Taking on defenders, using pace and technique in tight spaces.",
-    clips: [
-      {
-        id: "dribble-01",
-        title: "Beating the fullback",
-        description: "Accelerated past a defender down the left side.",
-        duration: "0:13",
-        videoUrl: "/videos/dribble-01.mov",
-        thumbnailUrl: "/thumbnails/dribble-01.jpg",
-      },
-      {
-        id: "dribble-02",
-        title: "Body feint in the box",
-        description: "Created space with a quick directional change.",
-        duration: "0:09",
-        videoUrl: "/videos/dribble-02.mov",
-        thumbnailUrl: "/thumbnails/dribble-02.jpg",
-      },
-      {
-        id: "dribble-03",
-        title: "Turn under pressure",
-        description: "Received, turned the defender in a tight space.",
-        duration: "0:11",
-        videoUrl: "/videos/dribble-03.mov",
-        thumbnailUrl: "/thumbnails/dribble-03.jpg",
-      },
-    ],
-  },
-  {
-    id: "movement",
-    label: "Intelligence",
-    title: "Runs & Movement",
-    description:
-      "Off-the-ball positioning, runs in behind, and channel work.",
-    clips: [
-      {
-        id: "run-01",
-        title: "Beating the offside trap",
-        description: "Perfectly timed run to get in behind the defensive line.",
-        duration: "0:12",
-        videoUrl: "/videos/run-01.mov",
-        thumbnailUrl: "/thumbnails/run-01.jpg",
-      },
-      {
-        id: "run-02",
-        title: "Drop deep, receive, turn",
-        description: "Dropped off the line, received, and immediately played forward.",
-        duration: "0:14",
-        videoUrl: "/videos/run-02.mov",
-        thumbnailUrl: "/thumbnails/run-02.jpg",
-      },
-      {
-        id: "run-03",
-        title: "Diagonal channel run",
-        description: "Run from striker into the left channel to create space.",
-        duration: "0:10",
-        videoUrl: "/videos/run-03.mov",
-        thumbnailUrl: "/thumbnails/run-03.jpg",
-      },
-    ],
-  },
-  {
-    id: "pressing",
-    label: "Work Rate",
-    title: "Pressing & Defensive Work",
-    description: "Press triggers, ball recoveries, and defensive contribution.",
-    clips: [
-      {
-        id: "press-01",
-        title: "Pressing the goalkeeper",
-        description: "Closed down quickly and forced a long ball under pressure.",
-        duration: "0:15",
-        videoUrl: "/videos/press-01.mov",
-        thumbnailUrl: "/thumbnails/press-01.jpg",
-      },
-      {
-        id: "press-02",
-        title: "Defensive header",
-        description: "Tracked back and won a headed duel in the team's half.",
-        duration: "0:12",
-        videoUrl: "/videos/press-02.mov",
-        thumbnailUrl: "/thumbnails/press-02.jpg",
-      },
-      {
-        id: "press-03",
-        title: "Win it back in transition",
-        description: "Pressed immediately after losing possession and recovered the ball.",
-        duration: "0:10",
-        videoUrl: "/videos/press-03.mov",
-        thumbnailUrl: "/thumbnails/press-03.jpg",
-      },
-    ],
-  },
-];
-
-// ═══════════════════════════════════════════════════
-// VIDEO EMBED RESOLVER
-// Converts a user-facing URL into the correct embed src
-// ═══════════════════════════════════════════════════
-
-function resolveEmbed(
-  url: string
-): { type: "iframe"; src: string } | { type: "video"; src: string } {
-  // YouTube (standard, short, Shorts)
-  const yt = url.match(
-    /(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([^&\s?/]+)/
-  );
-  if (yt)
+function getEmbed(
+  clip: Clip
+): { type: "iframe"; src: string } | { type: "video"; src: string } | null {
+  if (clip.sourceType === "youtube" && clip.youtubeId) {
     return {
       type: "iframe",
-      src: `https://www.youtube.com/embed/${yt[1]}?rel=0&modestbranding=1`,
+      src: `https://www.youtube.com/embed/${clip.youtubeId}?rel=0&modestbranding=1`,
     };
-
-  // Vimeo
-  const vimeo = url.match(/vimeo\.com\/(\d+)/);
-  if (vimeo)
-    return {
-      type: "iframe",
-      src: `https://player.vimeo.com/video/${vimeo[1]}?title=0&byline=0&portrait=0`,
-    };
-
-  // Google Drive
-  const drive = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
-  if (drive)
-    return {
-      type: "iframe",
-      src: `https://drive.google.com/file/d/${drive[1]}/preview`,
-    };
-
-  // Direct video file
-  return { type: "video", src: url };
+  }
+  if (clip.sourceType === "upload" && clip.videoUrl) {
+    return { type: "video", src: clip.videoUrl };
+  }
+  return null;
 }
 
-// ═══════════════════════════════════════════════════
-// CLIP MODAL
-// Full-screen viewer with prev/next + keyboard + swipe
-// ═══════════════════════════════════════════════════
+// ── Category type used only in this file ─────────────────────────────────────
+
+type CategoryWithClips = (typeof CATEGORIES)[number] & { clips: Clip[] };
+
+// ── Clip Modal ────────────────────────────────────────────────────────────────
 
 type ModalProps = {
-  category: Category;
+  category: CategoryWithClips;
   clipIndex: number;
   onClose: () => void;
   onNavigate: (index: number) => void;
@@ -280,7 +46,6 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
     setVideoError(false);
   }, [clipIndex]);
 
-  // Keyboard navigation
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -291,7 +56,6 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [hasPrev, hasNext, clipIndex, onClose, onNavigate]);
 
-  // Lock body scroll while modal is open
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -300,7 +64,7 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
     };
   }, []);
 
-  const embed = (clip.videoUrl && !videoError) ? resolveEmbed(clip.videoUrl) : null;
+  const embed = !videoError ? getEmbed(clip) : null;
 
   return (
     <div
@@ -318,13 +82,12 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
         if (diff < -55 && hasPrev) onNavigate(clipIndex - 1);
       }}
     >
-      {/* ── Inner panel (click inside doesn't close) ── */}
       <div
         className="relative flex flex-col items-center w-full px-4"
         style={{ maxWidth: "340px" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button */}
+        {/* Close */}
         <button
           type="button"
           onClick={onClose}
@@ -332,16 +95,7 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
           aria-label="Close clip viewer"
         >
           Close
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            aria-hidden="true"
-          >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
             <path d="M18 6L6 18M6 6l12 12" />
           </svg>
         </button>
@@ -359,7 +113,7 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
           </span>
         </div>
 
-        {/* Video frame — 9:16, capped so it fits on small phones */}
+        {/* Video frame — 9:16 */}
         <div
           className="relative w-full bg-[#0a0a0a] border border-[#222] overflow-hidden"
           style={{ aspectRatio: "9/16", maxHeight: "58vh" }}
@@ -374,7 +128,6 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
                 title={clip.title}
               />
             ) : (
-              /* Direct .mp4 / .mov / .webm */
               <video
                 src={embed.src}
                 controls
@@ -385,7 +138,7 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
               />
             )
           ) : (
-            /* ── Placeholder: no videoUrl set ── */
+            /* Placeholder */
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
               <div
                 className="absolute inset-0 opacity-[0.05]"
@@ -398,14 +151,7 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
               />
               <div className="relative z-10 text-center px-6 flex flex-col items-center gap-3">
                 <div className="w-12 h-12 rounded-full border border-[#222] flex items-center justify-center">
-                  <svg
-                    className="w-5 h-5 text-zinc-700"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    aria-hidden="true"
-                  >
+                  <svg className="w-5 h-5 text-zinc-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
                     <rect x="2" y="6" width="20" height="14" rx="2" />
                     <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                     <line x1="12" y1="11" x2="12" y2="17" />
@@ -414,12 +160,6 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
                 </div>
                 <p className="text-zinc-600 text-[11px] font-bold uppercase tracking-widest">
                   Clip not yet added
-                </p>
-                <p className="text-zinc-700 text-[11px] leading-relaxed">
-                  {/* REPLACE: Add a videoUrl to this clip's entry in VideoLibrary.tsx */}
-                  Set a <code className="text-zinc-600">videoUrl</code> for{" "}
-                  <code className="text-zinc-600">{clip.id}</code> in{" "}
-                  <code className="text-zinc-600">VideoLibrary.tsx</code>
                 </p>
               </div>
             </div>
@@ -431,17 +171,14 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
           <h3 className="font-heading font-bold text-white uppercase text-xl tracking-wide leading-tight">
             {clip.title}
           </h3>
-          <p className="text-zinc-500 text-sm mt-1 leading-relaxed">
-            {clip.description}
-          </p>
-          {clip.duration && (
-            <span className="text-zinc-700 text-xs font-medium mt-1 block">
-              {clip.duration}
-            </span>
+          {clip.description && (
+            <p className="text-zinc-500 text-sm mt-1 leading-relaxed">
+              {clip.description}
+            </p>
           )}
         </div>
 
-        {/* Dot navigation */}
+        {/* Dot nav */}
         <div className="flex items-center gap-2 mt-5" role="tablist" aria-label="Clip navigation">
           {category.clips.map((_, i) => (
             <button
@@ -460,58 +197,31 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
           ))}
         </div>
 
-        {/* Swipe hint — mobile only */}
         <p className="text-zinc-800 text-[10px] uppercase tracking-widest mt-3 sm:hidden">
           Swipe to navigate
         </p>
       </div>
 
-      {/* ── Side nav arrows ── */}
+      {/* Arrow nav */}
       <button
         type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          if (hasPrev) onNavigate(clipIndex - 1);
-        }}
+        onClick={(e) => { e.stopPropagation(); if (hasPrev) onNavigate(clipIndex - 1); }}
         disabled={!hasPrev}
         className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 w-10 h-10 border border-white/8 hover:border-white/25 text-white/25 hover:text-white disabled:opacity-0 disabled:pointer-events-none flex items-center justify-center transition-all duration-200"
         aria-label="Previous clip"
       >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M15 18l-6-6 6-6" />
         </svg>
       </button>
       <button
         type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          if (hasNext) onNavigate(clipIndex + 1);
-        }}
+        onClick={(e) => { e.stopPropagation(); if (hasNext) onNavigate(clipIndex + 1); }}
         disabled={!hasNext}
         className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 w-10 h-10 border border-white/8 hover:border-white/25 text-white/25 hover:text-white disabled:opacity-0 disabled:pointer-events-none flex items-center justify-center transition-all duration-200"
         aria-label="Next clip"
       >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M9 18l6-6-6-6" />
         </svg>
       </button>
@@ -519,19 +229,22 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
   );
 }
 
-// ═══════════════════════════════════════════════════
-// REEL CARD
-// Single 9:16 clip card in the horizontal row
-// ═══════════════════════════════════════════════════
+// ── Reel Card ─────────────────────────────────────────────────────────────────
 
-type ReelCardProps = {
+function ReelCard({
+  clip,
+  index,
+  categoryTitle,
+  onClick,
+}: {
   clip: Clip;
   index: number;
   categoryTitle: string;
   onClick: () => void;
-};
+}) {
+  const hasVideo =
+    clip.sourceType === "youtube" ? !!clip.youtubeId : !!clip.videoUrl;
 
-function ReelCard({ clip, index, categoryTitle, onClick }: ReelCardProps) {
   return (
     <button
       type="button"
@@ -540,7 +253,7 @@ function ReelCard({ clip, index, categoryTitle, onClick }: ReelCardProps) {
       style={{ aspectRatio: "9/16" }}
       aria-label={`${categoryTitle}: ${clip.title}`}
     >
-      {/* Thumbnail if set */}
+      {/* Thumbnail */}
       {clip.thumbnailUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -550,7 +263,6 @@ function ReelCard({ clip, index, categoryTitle, onClick }: ReelCardProps) {
           className="absolute inset-0 w-full h-full object-cover"
         />
       ) : (
-        /* Diagonal stripe pattern */
         <div
           className="absolute inset-0 opacity-[0.07]"
           style={{
@@ -562,16 +274,20 @@ function ReelCard({ clip, index, categoryTitle, onClick }: ReelCardProps) {
         />
       )}
 
-      {/* Gradient — strong at bottom for text legibility */}
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/5" />
 
-      {/* Clip number — top left */}
+      {/* Index */}
       <span className="absolute top-2.5 left-2.5 z-10 text-[10px] font-bold text-white/25 tracking-[0.15em]">
         {String(index + 1).padStart(2, "0")}
       </span>
 
-      {/* "Soon" badge — top right, only when no video */}
-      {!clip.videoUrl && (
+      {/* Source badge */}
+      {clip.sourceType === "youtube" && (
+        <span className="absolute top-2.5 right-2.5 z-10 text-[9px] font-bold text-[#e11d48]/70 border border-[#e11d48]/20 px-1.5 py-px uppercase tracking-wider">
+          YT
+        </span>
+      )}
+      {!hasVideo && clip.sourceType !== "youtube" && (
         <span className="absolute top-2.5 right-2.5 z-10 text-[9px] font-bold text-zinc-700 border border-[#2a2a2a] px-1.5 py-px uppercase tracking-wider">
           Soon
         </span>
@@ -589,13 +305,8 @@ function ReelCard({ clip, index, categoryTitle, onClick }: ReelCardProps) {
         </svg>
       </div>
 
-      {/* Bottom info */}
+      {/* Title */}
       <div className="absolute bottom-0 left-0 right-0 p-2.5 z-10">
-        {clip.duration && (
-          <span className="block text-[10px] text-zinc-600 font-medium mb-0.5 tabular-nums">
-            {clip.duration}
-          </span>
-        )}
         <p className="font-heading font-bold text-white text-xs sm:text-sm leading-tight uppercase tracking-wide group-hover:text-[#e11d48] transition-colors duration-200 line-clamp-2">
           {clip.title}
         </p>
@@ -604,25 +315,22 @@ function ReelCard({ clip, index, categoryTitle, onClick }: ReelCardProps) {
   );
 }
 
-// ═══════════════════════════════════════════════════
-// CATEGORY ROW
-// Section title + horizontal scroll strip of reel cards
-// ═══════════════════════════════════════════════════
+// ── Reel Row ──────────────────────────────────────────────────────────────────
 
-type ReelRowProps = {
-  category: Category;
+function ReelRow({
+  category,
+  onClipClick,
+}: {
+  category: CategoryWithClips;
   onClipClick: (clipIndex: number) => void;
-};
-
-function ReelRow({ category, onClipClick }: ReelRowProps) {
+}) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const reversedClips = [...category.clips].reverse();
+
+  // Newest first: higher order = newer, so reverse for display
+  const displayClips = [...category.clips].reverse();
 
   const scroll = (dir: "left" | "right") => {
-    scrollRef.current?.scrollBy({
-      left: dir === "left" ? -230 : 230,
-      behavior: "smooth",
-    });
+    scrollRef.current?.scrollBy({ left: dir === "left" ? -230 : 230, behavior: "smooth" });
   };
 
   return (
@@ -644,7 +352,6 @@ function ReelRow({ category, onClipClick }: ReelRowProps) {
           </p>
         </div>
 
-        {/* Desktop scroll controls */}
         <div className="hidden sm:flex items-center gap-1.5 mt-1 shrink-0">
           <button
             type="button"
@@ -652,17 +359,7 @@ function ReelRow({ category, onClipClick }: ReelRowProps) {
             className="w-8 h-8 border border-[#1e1e1e] hover:border-zinc-600 text-zinc-700 hover:text-white flex items-center justify-center transition-colors duration-200"
             aria-label={`Scroll ${category.title} left`}
           >
-            <svg
-              width="11"
-              height="11"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M15 18l-6-6 6-6" />
             </svg>
           </button>
@@ -672,17 +369,7 @@ function ReelRow({ category, onClipClick }: ReelRowProps) {
             className="w-8 h-8 border border-[#1e1e1e] hover:border-zinc-600 text-zinc-700 hover:text-white flex items-center justify-center transition-colors duration-200"
             aria-label={`Scroll ${category.title} right`}
           >
-            <svg
-              width="11"
-              height="11"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M9 18l6-6-6-6" />
             </svg>
           </button>
@@ -697,14 +384,11 @@ function ReelRow({ category, onClipClick }: ReelRowProps) {
         role="list"
         aria-label={`${category.title} clips`}
       >
-        {reversedClips.map((clip, displayIndex) => {
+        {displayClips.map((clip, displayIndex) => {
+          // Map display index back to the correct modal index (in original sorted order)
           const originalIndex = category.clips.length - 1 - displayIndex;
           return (
-            <div
-              key={clip.id}
-              role="listitem"
-              style={{ scrollSnapAlign: "start", flexShrink: 0 }}
-            >
+            <div key={clip.id} role="listitem" style={{ scrollSnapAlign: "start", flexShrink: 0 }}>
               <ReelCard
                 clip={clip}
                 index={displayIndex}
@@ -715,23 +399,13 @@ function ReelRow({ category, onClipClick }: ReelRowProps) {
           );
         })}
 
-        {/* "Add more" placeholder — visual cue to add clips */}
+        {/* "Add more" placeholder */}
         <div
           className="flex-shrink-0 w-[144px] sm:w-[168px] border border-dashed border-[#1a1a1a] flex flex-col items-center justify-center gap-2"
           style={{ aspectRatio: "9/16" }}
           aria-hidden="true"
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            className="text-zinc-800"
-            aria-hidden="true"
-          >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-zinc-800" aria-hidden="true">
             <path d="M12 5v14M5 12h14" />
           </svg>
           <span className="text-zinc-800 text-[9px] uppercase tracking-widest font-semibold">
@@ -743,54 +417,28 @@ function ReelRow({ category, onClipClick }: ReelRowProps) {
   );
 }
 
-// ═══════════════════════════════════════════════════
-// MAIN EXPORT
-// ═══════════════════════════════════════════════════
+// ── Main Export ───────────────────────────────────────────────────────────────
 
 export default function VideoLibrary() {
-  const [modal, setModal] = useState<{
-    categoryIndex: number;
-    clipIndex: number;
-  } | null>(null);
-
-  const [clipMap, setClipMap] = useState<
-    Record<string, { videoUrl?: string; thumbnailUrl?: string }>
-  >({});
+  const [clips, setClips] = useState<Clip[]>([]);
+  const [modal, setModal] = useState<{ categoryIndex: number; clipIndex: number } | null>(null);
 
   useEffect(() => {
     fetch("/api/clips")
       .then((r) => r.json())
-      .then(setClipMap)
+      .then((data) => {
+        if (Array.isArray(data)) setClips(data);
+      })
       .catch(() => {});
   }, []);
 
-  const resolvedCategories = CATEGORIES.map((cat) => {
-    const prefix = cat.clips[0]?.id.replace(/-\d+$/, "") ?? "";
-    const hardcodedIds = new Set(cat.clips.map((c) => c.id));
-
-    const extraClips = Object.keys(clipMap)
-      .filter((id) => id.startsWith(prefix + "-") && !hardcodedIds.has(id))
-      .sort()
-      .map((id) => ({
-        id,
-        title: cat.title + " clip",
-        description: "",
-        videoUrl: clipMap[id]?.videoUrl,
-        thumbnailUrl: clipMap[id]?.thumbnailUrl,
-      }));
-
-    return {
-      ...cat,
-      clips: [
-        ...cat.clips.map((clip) => ({
-          ...clip,
-          videoUrl: clipMap[clip.id]?.videoUrl ?? clip.videoUrl,
-          thumbnailUrl: clipMap[clip.id]?.thumbnailUrl ?? clip.thumbnailUrl,
-        })),
-        ...extraClips,
-      ],
-    };
-  });
+  // Group clips into categories, sorted by order within each category
+  const categoriesWithClips: CategoryWithClips[] = CATEGORIES.map((cat) => ({
+    ...cat,
+    clips: clips
+      .filter((c) => c.category === cat.id)
+      .sort((a, b) => a.order - b.order),
+  }));
 
   const openClip = useCallback((categoryIndex: number, clipIndex: number) => {
     setModal({ categoryIndex, clipIndex });
@@ -834,28 +482,17 @@ export default function VideoLibrary() {
               className="flex items-center gap-2 text-[#e11d48] text-xs font-bold uppercase tracking-[0.15em] hover:text-white transition-colors duration-200 shrink-0"
             >
               Request full match footage
-              <svg
-                width="10"
-                height="10"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </a>
           </div>
         </div>
 
-        {/* Divider */}
         <div className="border-t border-[#111] mb-12" />
 
-        {/* Category rows */}
-        {resolvedCategories.map((category, categoryIndex) => (
+        {/* Category rows — always all 6, empty ones just show the add-clip placeholder */}
+        {categoriesWithClips.map((category, categoryIndex) => (
           <ReelRow
             key={category.id}
             category={category}
@@ -885,10 +522,9 @@ export default function VideoLibrary() {
         </div>
       </section>
 
-      {/* Modal — rendered outside the section so it overlays everything */}
       {modal !== null && (
         <ClipModal
-          category={resolvedCategories[modal.categoryIndex]}
+          category={categoriesWithClips[modal.categoryIndex]}
           clipIndex={modal.clipIndex}
           onClose={closeModal}
           onNavigate={navigate}
