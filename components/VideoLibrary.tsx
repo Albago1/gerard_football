@@ -764,14 +764,33 @@ export default function VideoLibrary() {
       .catch(() => {});
   }, []);
 
-  const resolvedCategories = CATEGORIES.map((cat) => ({
-    ...cat,
-    clips: cat.clips.map((clip) => ({
-      ...clip,
-      videoUrl: clipMap[clip.id]?.videoUrl ?? clip.videoUrl,
-      thumbnailUrl: clipMap[clip.id]?.thumbnailUrl ?? clip.thumbnailUrl,
-    })),
-  }));
+  const resolvedCategories = CATEGORIES.map((cat) => {
+    const prefix = cat.clips[0]?.id.replace(/-\d+$/, "") ?? "";
+    const hardcodedIds = new Set(cat.clips.map((c) => c.id));
+
+    const extraClips = Object.keys(clipMap)
+      .filter((id) => id.startsWith(prefix + "-") && !hardcodedIds.has(id))
+      .sort()
+      .map((id) => ({
+        id,
+        title: cat.title + " clip",
+        description: "",
+        videoUrl: clipMap[id]?.videoUrl,
+        thumbnailUrl: clipMap[id]?.thumbnailUrl,
+      }));
+
+    return {
+      ...cat,
+      clips: [
+        ...cat.clips.map((clip) => ({
+          ...clip,
+          videoUrl: clipMap[clip.id]?.videoUrl ?? clip.videoUrl,
+          thumbnailUrl: clipMap[clip.id]?.thumbnailUrl ?? clip.thumbnailUrl,
+        })),
+        ...extraClips,
+      ],
+    };
+  });
 
   const openClip = useCallback((categoryIndex: number, clipIndex: number) => {
     setModal({ categoryIndex, clipIndex });

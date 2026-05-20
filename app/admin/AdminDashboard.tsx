@@ -8,29 +8,53 @@ const CATEGORIES = [
   {
     id: "goals",
     label: "Goals",
-    clips: ["goal-01", "goal-02", "goal-03", "goal-04"],
+    prefix: "goal",
+    base: ["goal-01", "goal-02", "goal-03", "goal-04"],
   },
   {
     id: "assists",
     label: "Assists",
-    clips: ["assist-01", "assist-02", "assist-03"],
+    prefix: "assist",
+    base: ["assist-01", "assist-02", "assist-03"],
   },
   {
     id: "dribbling",
     label: "Dribbling",
-    clips: ["dribble-01", "dribble-02", "dribble-03"],
+    prefix: "dribble",
+    base: ["dribble-01", "dribble-02", "dribble-03"],
   },
   {
     id: "movement",
     label: "Runs",
-    clips: ["run-01", "run-02", "run-03"],
+    prefix: "run",
+    base: ["run-01", "run-02", "run-03"],
   },
   {
     id: "pressing",
     label: "Pressing",
-    clips: ["press-01", "press-02", "press-03"],
+    prefix: "press",
+    base: ["press-01", "press-02", "press-03"],
   },
 ];
+
+function buildClipList(
+  base: string[],
+  prefix: string,
+  clipMap: ClipMap,
+  extra: string[]
+): string[] {
+  const fromBlob = Object.keys(clipMap).filter((id) =>
+    id.startsWith(prefix + "-")
+  );
+  const all = new Set([...base, ...fromBlob, ...extra]);
+  return [...all].sort();
+}
+
+function nextClipId(clips: string[], prefix: string): string {
+  const nums = clips.map((id) => parseInt(id.match(/-(\d+)$/)?.[1] ?? "0"));
+  const next = Math.max(...nums, 0) + 1;
+  return `${prefix}-${String(next).padStart(2, "0")}`;
+}
 
 type ClipMap = Record<string, { videoUrl?: string; thumbnailUrl?: string }>;
 
@@ -39,6 +63,7 @@ export default function AdminDashboard() {
   const [clipMap, setClipMap] = useState<ClipMap>({});
   const [uploading, setUploading] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [extraSlots, setExtraSlots] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     fetch("/api/clips")
@@ -48,6 +73,13 @@ export default function AdminDashboard() {
   }, []);
 
   const category = CATEGORIES.find((c) => c.id === activeTab)!;
+  const clips = buildClipList(
+    category.base,
+    category.prefix,
+    clipMap,
+    extraSlots[activeTab] ?? []
+  );
+  const next = nextClipId(clips, category.prefix);
 
   const handleUpload = async (
     clipId: string,
@@ -143,7 +175,7 @@ export default function AdminDashboard() {
 
       {/* Clip rows — newest first */}
       <div className="space-y-2">
-        {[...category.clips].reverse().map((clipId) => (
+        {[...clips].reverse().map((clipId) => (
           <ClipRow
             key={clipId}
             clipId={clipId}
@@ -154,6 +186,20 @@ export default function AdminDashboard() {
           />
         ))}
       </div>
+
+      {/* Add next slot */}
+      <button
+        type="button"
+        onClick={() =>
+          setExtraSlots((prev) => ({
+            ...prev,
+            [activeTab]: [...(prev[activeTab] ?? []), next],
+          }))
+        }
+        className="mt-3 w-full border border-dashed border-[#2a2a2a] hover:border-[#e11d48]/50 text-zinc-700 hover:text-[#e11d48] text-xs font-bold uppercase tracking-widest py-3 transition-colors duration-200"
+      >
+        + Add {next}
+      </button>
 
       <p className="text-zinc-700 text-xs mt-8 leading-relaxed">
         Files upload directly to Vercel Blob. The site reflects changes
