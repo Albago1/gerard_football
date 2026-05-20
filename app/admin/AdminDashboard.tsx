@@ -19,7 +19,6 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { upload } from "@vercel/blob/client";
 import { logout } from "./actions";
 import { CATEGORIES } from "@/lib/categories";
 import type { Clip } from "@/lib/clips-store";
@@ -107,11 +106,18 @@ function ClipForm({
   ) {
     setUploading(true);
     try {
-      const blob = await upload(file.name, file, {
-        access: "public",
-        handleUploadUrl: "/api/admin/upload",
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData,
       });
-      set(field, blob.url);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? "Upload failed");
+      }
+      const { url } = await res.json();
+      set(field, url);
     } catch (err) {
       alert(`Upload failed: ${(err as Error).message}`);
     } finally {
