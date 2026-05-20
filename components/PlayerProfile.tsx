@@ -3,13 +3,10 @@
 import { useLang } from "@/lib/i18n";
 
 const CLUBS = [
-  { name: "KF Tirana",         ageGroup: "U13", initials: "KFT", color: "#ef4444", logo: "/clubs/kf-tirana.png" },
-  { name: "KF Tirana",         ageGroup: "U15", initials: "KFT", color: "#ef4444", logo: "/clubs/kf-tirana.png" },
-  { name: "Blau Weiss Berlin", ageGroup: "U15", initials: "BWB", color: "#3b82f6", logo: "/clubs/blau-weiss-berlin.png" },
-  { name: "Berliner SC",       ageGroup: "U17", initials: "BSC", color: "#818cf8", logo: "/clubs/berliner-sc.png" },
-  { name: "Berliner SC",       ageGroup: "U18", initials: "BSC", color: "#818cf8", logo: "/clubs/berliner-sc.png" },
-  { name: "SC Staaken",        ageGroup: "U18", initials: "SCS", color: "#e11d48", logo: "/clubs/sc-staaken.png" },
-  { name: "SC Staaken",        ageGroup: "U19", initials: "SCS", color: "#e11d48", logo: "/clubs/sc-staaken.png" },
+  { name: "KF Tirana",         ageGroups: ["U13", "U15"], initials: "KFT", color: "#ef4444", logo: "/clubs/kf-tirana.png" },
+  { name: "Blau Weiss Berlin", ageGroups: ["U15"],         initials: "BWB", color: "#3b82f6", logo: "/clubs/blau-weiss-berlin.png" },
+  { name: "Berliner SC",       ageGroups: ["U17", "U18"], initials: "BSC", color: "#818cf8", logo: "/clubs/berliner-sc.png" },
+  { name: "SC Staaken",        ageGroups: ["U18", "U19"], initials: "SCS", color: "#e11d48", logo: "/clubs/sc-staaken.png" },
 ];
 
 function ClubLogo({ logo, initials, color, name }: { logo: string; initials: string; color: string; name: string }) {
@@ -138,16 +135,21 @@ export default function PlayerProfile() {
                 <p className="text-white font-heading font-bold text-[11px] sm:text-xs uppercase leading-tight tracking-wide text-center mb-2.5">
                   {club.name}
                 </p>
-                <span
-                  className="inline-block text-[10px] font-bold tracking-[0.15em] uppercase px-2 py-0.5"
-                  style={{
-                    color: club.color,
-                    backgroundColor: `${club.color}18`,
-                    border: `1px solid ${club.color}30`,
-                  }}
-                >
-                  {club.ageGroup}
-                </span>
+                <div className="flex flex-wrap justify-center gap-1">
+                  {club.ageGroups.map((ag) => (
+                    <span
+                      key={ag}
+                      className="inline-block text-[10px] font-bold tracking-[0.15em] uppercase px-2 py-0.5"
+                      style={{
+                        color: club.color,
+                        backgroundColor: `${club.color}18`,
+                        border: `1px solid ${club.color}30`,
+                      }}
+                    >
+                      {ag}
+                    </span>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
