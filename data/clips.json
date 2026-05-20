@@ -1,0 +1,74 @@
+[
+  {
+    "id": "test-goals-1",
+    "title": "Best Goals of 2024",
+    "description": "Top goals compilation from across Europe's best leagues.",
+    "category": "goals",
+    "order": 0,
+    "videoUrl": "https://www.youtube.com/watch?v=X0KD6gXlFjY",
+    "thumbnailUrl": "https://img.youtube.com/vi/X0KD6gXlFjY/hqdefault.jpg"
+  },
+  {
+    "id": "test-goals-2",
+    "title": "Ronaldo Double Strike",
+    "description": "Clinical finishing — two goals in a dominant display.",
+    "category": "goals",
+    "order": 1,
+    "videoUrl": "https://www.youtube.com/watch?v=CkpxeIKNWuI",
+    "thumbnailUrl": "https://img.youtube.com/vi/CkpxeIKNWuI/hqdefault.jpg"
+  },
+  {
+    "id": "test-goals-3",
+    "title": "Bundesliga Goal of the Year",
+    "description": "The best individual strikes from the German top flight.",
+    "category": "goals",
+    "order": 2,
+    "videoUrl": "https://www.youtube.com/watch?v=d4K-Sm19vNw",
+    "thumbnailUrl": "https://img.youtube.com/vi/d4K-Sm19vNw/hqdefault.jpg"
+  },
+  {
+    "id": "test-assists-1",
+    "title": "Skills & Chance Creation",
+    "description": "Elite attacking moves leading to goals and assists.",
+    "category": "assists",
+    "order": 0,
+    "videoUrl": "https://www.youtube.com/watch?v=JUgS_OLPxGE",
+    "thumbnailUrl": "https://img.youtube.com/vi/JUgS_OLPxGE/hqdefault.jpg"
+  },
+  {
+    "id": "test-dribbling-1",
+    "title": "Wirtz — World Class Dribbling",
+    "description": "100 moments of elite close control and direct running.",
+    "category": "dribbling",
+    "order": 0,
+    "videoUrl": "https://www.youtube.com/watch?v=91mlX75ALt0",
+    "thumbnailUrl": "https://img.youtube.com/vi/91mlX75ALt0/hqdefault.jpg"
+  },
+  {
+    "id": "test-dribbling-2",
+    "title": "Messi — Greatest Dribbles",
+    "description": "The blueprint for taking defenders on in tight spaces.",
+    "category": "dribbling",
+    "order": 1,
+    "videoUrl": "https://www.youtube.com/watch?v=WpqzCxXguZ0",
+    "thumbnailUrl": "https://img.youtube.com/vi/WpqzCxXguZ0/hqdefault.jpg"
+  },
+  {
+    "id": "test-movement-1",
+    "title": "Xavi Simons — Movement & Goals",
+    "description": "Intelligent off-ball runs and attacking movement.",
+    "category": "movement",
+    "order": 0,
+    "videoUrl": "https://www.youtube.com/watch?v=b_nkxQkh_lU",
+    "thumbnailUrl": "https://img.youtube.com/vi/b_nkxQkh_lU/hqdefault.jpg"
+  },
+  {
+    "id": "test-pressing-1",
+    "title": "Free Kick Goals 2024",
+    "description": "Direct free kicks and set-piece precision.",
+    "category": "pressing",
+    "order": 0,
+    "videoUrl": "https://www.youtube.com/watch?v=sMGABE9t0Ik",
+    "thumbnailUrl": "https://img.youtube.com/vi/sMGABE9t0Ik/hqdefault.jpg"
+  }
+]
