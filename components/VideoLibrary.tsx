@@ -62,24 +62,26 @@ const CATEGORIES: Category[] = [
       {
         id: "goal-02",
         title: "1v1 with goalkeeper",
-        description:
-          "Composed finish after breaking the defensive line.",
+        description: "Composed finish after breaking the defensive line.",
         duration: "0:12",
-        // REPLACE: videoUrl: "https://youtu.be/YOUR_ID",
+        videoUrl: "/videos/goal-02.mov",
+        thumbnailUrl: "/thumbnails/goal-02.jpg",
       },
       {
         id: "goal-03",
         title: "Left-foot finish",
         description: "Cut inside from the left and finished low near post.",
         duration: "0:15",
-        // REPLACE: videoUrl: "https://youtu.be/YOUR_ID",
+        videoUrl: "/videos/goal-03.mov",
+        thumbnailUrl: "/thumbnails/goal-03.jpg",
       },
       {
         id: "goal-04",
         title: "Header at far post",
         description: "Attacked the cross from a wide position.",
         duration: "0:20",
-        // REPLACE: videoUrl: "https://youtu.be/YOUR_ID",
+        videoUrl: "/videos/goal-04.mov",
+        thumbnailUrl: "/thumbnails/goal-04.jpg",
       },
     ],
   },
@@ -93,25 +95,26 @@ const CATEGORIES: Category[] = [
       {
         id: "assist-01",
         title: "Through ball assist",
-        description:
-          "Spotted the run in behind and weighted the pass perfectly.",
+        description: "Spotted the run in behind and weighted the pass perfectly.",
         duration: "0:14",
-        // REPLACE: videoUrl: "https://youtu.be/YOUR_ID",
+        videoUrl: "/videos/assist-01.mov",
+        thumbnailUrl: "/thumbnails/assist-01.jpg",
       },
       {
         id: "assist-02",
         title: "Cut-back assist",
         description: "Beat the fullback and cut back for a tap-in.",
         duration: "0:11",
-        // REPLACE: videoUrl: "https://youtu.be/YOUR_ID",
+        videoUrl: "/videos/assist-02.mov",
+        thumbnailUrl: "/thumbnails/assist-02.jpg",
       },
       {
         id: "assist-03",
         title: "Hold-up and lay-off",
-        description:
-          "Held the ball under pressure and created a shooting chance.",
+        description: "Held the ball under pressure and created a shooting chance.",
         duration: "0:16",
-        // REPLACE: videoUrl: "https://youtu.be/YOUR_ID",
+        videoUrl: "/videos/assist-03.mov",
+        thumbnailUrl: "/thumbnails/assist-03.jpg",
       },
     ],
   },
@@ -127,21 +130,24 @@ const CATEGORIES: Category[] = [
         title: "Beating the fullback",
         description: "Accelerated past a defender down the left side.",
         duration: "0:13",
-        // REPLACE: videoUrl: "https://youtu.be/YOUR_ID",
+        videoUrl: "/videos/dribble-01.mov",
+        thumbnailUrl: "/thumbnails/dribble-01.jpg",
       },
       {
         id: "dribble-02",
         title: "Body feint in the box",
         description: "Created space with a quick directional change.",
         duration: "0:09",
-        // REPLACE: videoUrl: "https://youtu.be/YOUR_ID",
+        videoUrl: "/videos/dribble-02.mov",
+        thumbnailUrl: "/thumbnails/dribble-02.jpg",
       },
       {
         id: "dribble-03",
         title: "Turn under pressure",
         description: "Received, turned the defender in a tight space.",
         duration: "0:11",
-        // REPLACE: videoUrl: "https://youtu.be/YOUR_ID",
+        videoUrl: "/videos/dribble-03.mov",
+        thumbnailUrl: "/thumbnails/dribble-03.jpg",
       },
     ],
   },
@@ -155,25 +161,26 @@ const CATEGORIES: Category[] = [
       {
         id: "run-01",
         title: "Beating the offside trap",
-        description:
-          "Perfectly timed run to get in behind the defensive line.",
+        description: "Perfectly timed run to get in behind the defensive line.",
         duration: "0:12",
-        // REPLACE: videoUrl: "https://youtu.be/YOUR_ID",
+        videoUrl: "/videos/run-01.mov",
+        thumbnailUrl: "/thumbnails/run-01.jpg",
       },
       {
         id: "run-02",
         title: "Drop deep, receive, turn",
-        description:
-          "Dropped off the line, received, and immediately played forward.",
+        description: "Dropped off the line, received, and immediately played forward.",
         duration: "0:14",
-        // REPLACE: videoUrl: "https://youtu.be/YOUR_ID",
+        videoUrl: "/videos/run-02.mov",
+        thumbnailUrl: "/thumbnails/run-02.jpg",
       },
       {
         id: "run-03",
         title: "Diagonal channel run",
         description: "Run from striker into the left channel to create space.",
         duration: "0:10",
-        // REPLACE: videoUrl: "https://youtu.be/YOUR_ID",
+        videoUrl: "/videos/run-03.mov",
+        thumbnailUrl: "/thumbnails/run-03.jpg",
       },
     ],
   },
@@ -188,22 +195,24 @@ const CATEGORIES: Category[] = [
         title: "Pressing the goalkeeper",
         description: "Closed down quickly and forced a long ball under pressure.",
         duration: "0:15",
-        // REPLACE: videoUrl: "https://youtu.be/YOUR_ID",
+        videoUrl: "/videos/press-01.mov",
+        thumbnailUrl: "/thumbnails/press-01.jpg",
       },
       {
         id: "press-02",
         title: "Defensive header",
         description: "Tracked back and won a headed duel in the team's half.",
         duration: "0:12",
-        // REPLACE: videoUrl: "https://youtu.be/YOUR_ID",
+        videoUrl: "/videos/press-02.mov",
+        thumbnailUrl: "/thumbnails/press-02.jpg",
       },
       {
         id: "press-03",
         title: "Win it back in transition",
-        description:
-          "Pressed immediately after losing possession and recovered the ball.",
+        description: "Pressed immediately after losing possession and recovered the ball.",
         duration: "0:10",
-        // REPLACE: videoUrl: "https://youtu.be/YOUR_ID",
+        videoUrl: "/videos/press-03.mov",
+        thumbnailUrl: "/thumbnails/press-03.jpg",
       },
     ],
   },
@@ -265,6 +274,11 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
   const hasPrev = clipIndex > 0;
   const hasNext = clipIndex < total - 1;
   const touchStartX = useRef<number>(0);
+  const [videoError, setVideoError] = useState(false);
+
+  useEffect(() => {
+    setVideoError(false);
+  }, [clipIndex]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -286,7 +300,7 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
     };
   }, []);
 
-  const embed = clip.videoUrl ? resolveEmbed(clip.videoUrl) : null;
+  const embed = (clip.videoUrl && !videoError) ? resolveEmbed(clip.videoUrl) : null;
 
   return (
     <div
@@ -360,13 +374,14 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
                 title={clip.title}
               />
             ) : (
-              /* Direct .mp4 / .webm — no autoplay, sound on by default */
+              /* Direct .mp4 / .mov / .webm */
               <video
                 src={embed.src}
                 controls
                 playsInline
                 className="absolute inset-0 w-full h-full object-contain"
                 aria-label={clip.title}
+                onError={() => setVideoError(true)}
               />
             )
           ) : (
@@ -601,6 +616,7 @@ type ReelRowProps = {
 
 function ReelRow({ category, onClipClick }: ReelRowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const reversedClips = [...category.clips].reverse();
 
   const scroll = (dir: "left" | "right") => {
     scrollRef.current?.scrollBy({
@@ -681,20 +697,23 @@ function ReelRow({ category, onClipClick }: ReelRowProps) {
         role="list"
         aria-label={`${category.title} clips`}
       >
-        {category.clips.map((clip, i) => (
-          <div
-            key={clip.id}
-            role="listitem"
-            style={{ scrollSnapAlign: "start", flexShrink: 0 }}
-          >
-            <ReelCard
-              clip={clip}
-              index={i}
-              categoryTitle={category.title}
-              onClick={() => onClipClick(i)}
-            />
-          </div>
-        ))}
+        {reversedClips.map((clip, displayIndex) => {
+          const originalIndex = category.clips.length - 1 - displayIndex;
+          return (
+            <div
+              key={clip.id}
+              role="listitem"
+              style={{ scrollSnapAlign: "start", flexShrink: 0 }}
+            >
+              <ReelCard
+                clip={clip}
+                index={displayIndex}
+                categoryTitle={category.title}
+                onClick={() => onClipClick(originalIndex)}
+              />
+            </div>
+          );
+        })}
 
         {/* "Add more" placeholder — visual cue to add clips */}
         <div
