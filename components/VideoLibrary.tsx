@@ -5,20 +5,40 @@ import { CATEGORIES } from "@/lib/categories";
 import type { Clip } from "@/lib/clips-store";
 
 // ── Embed resolver ────────────────────────────────────────────────────────────
+// Accepts any URL and returns the right player type.
+// YouTube, Vimeo, and Google Drive get an iframe; everything else a <video>.
 
-function getEmbed(
-  clip: Clip
-): { type: "iframe"; src: string } | { type: "video"; src: string } | null {
-  if (clip.sourceType === "youtube" && clip.youtubeId) {
+function resolveEmbed(
+  url: string
+): { type: "iframe"; src: string } | { type: "video"; src: string } {
+  const yt = url.match(
+    /(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([^&\s?/]+)/
+  );
+  if (yt)
     return {
       type: "iframe",
-      src: `https://www.youtube.com/embed/${clip.youtubeId}?rel=0&modestbranding=1`,
+      src: `https://www.youtube.com/embed/${yt[1]}?rel=0&modestbranding=1`,
     };
-  }
-  if (clip.sourceType === "upload" && clip.videoUrl) {
-    return { type: "video", src: clip.videoUrl };
-  }
-  return null;
+
+  const vimeo = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeo)
+    return {
+      type: "iframe",
+      src: `https://player.vimeo.com/video/${vimeo[1]}?title=0&byline=0&portrait=0`,
+    };
+
+  const drive = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (drive)
+    return {
+      type: "iframe",
+      src: `https://drive.google.com/file/d/${drive[1]}/preview`,
+    };
+
+  return { type: "video", src: url };
+}
+
+function isYouTubeUrl(url: string) {
+  return /youtu\.be|youtube\.com/.test(url);
 }
 
 // ── Category type used only in this file ─────────────────────────────────────
@@ -64,7 +84,8 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
     };
   }, []);
 
-  const embed = !videoError ? getEmbed(clip) : null;
+  const embed =
+    clip.videoUrl && !videoError ? resolveEmbed(clip.videoUrl) : null;
 
   return (
     <div
@@ -95,7 +116,16 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
           aria-label="Close clip viewer"
         >
           Close
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
             <path d="M18 6L6 18M6 6l12 12" />
           </svg>
         </button>
@@ -138,7 +168,6 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
               />
             )
           ) : (
-            /* Placeholder */
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
               <div
                 className="absolute inset-0 opacity-[0.05]"
@@ -151,7 +180,14 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
               />
               <div className="relative z-10 text-center px-6 flex flex-col items-center gap-3">
                 <div className="w-12 h-12 rounded-full border border-[#222] flex items-center justify-center">
-                  <svg className="w-5 h-5 text-zinc-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                  <svg
+                    className="w-5 h-5 text-zinc-700"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    aria-hidden="true"
+                  >
                     <rect x="2" y="6" width="20" height="14" rx="2" />
                     <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                     <line x1="12" y1="11" x2="12" y2="17" />
@@ -179,7 +215,11 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
         </div>
 
         {/* Dot nav */}
-        <div className="flex items-center gap-2 mt-5" role="tablist" aria-label="Clip navigation">
+        <div
+          className="flex items-center gap-2 mt-5"
+          role="tablist"
+          aria-label="Clip navigation"
+        >
           {category.clips.map((_, i) => (
             <button
               key={i}
@@ -205,23 +245,49 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
       {/* Arrow nav */}
       <button
         type="button"
-        onClick={(e) => { e.stopPropagation(); if (hasPrev) onNavigate(clipIndex - 1); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (hasPrev) onNavigate(clipIndex - 1);
+        }}
         disabled={!hasPrev}
         className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 w-10 h-10 border border-white/8 hover:border-white/25 text-white/25 hover:text-white disabled:opacity-0 disabled:pointer-events-none flex items-center justify-center transition-all duration-200"
         aria-label="Previous clip"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
           <path d="M15 18l-6-6 6-6" />
         </svg>
       </button>
       <button
         type="button"
-        onClick={(e) => { e.stopPropagation(); if (hasNext) onNavigate(clipIndex + 1); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (hasNext) onNavigate(clipIndex + 1);
+        }}
         disabled={!hasNext}
         className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 w-10 h-10 border border-white/8 hover:border-white/25 text-white/25 hover:text-white disabled:opacity-0 disabled:pointer-events-none flex items-center justify-center transition-all duration-200"
         aria-label="Next clip"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
           <path d="M9 18l6-6-6-6" />
         </svg>
       </button>
@@ -242,8 +308,8 @@ function ReelCard({
   categoryTitle: string;
   onClick: () => void;
 }) {
-  const hasVideo =
-    clip.sourceType === "youtube" ? !!clip.youtubeId : !!clip.videoUrl;
+  const hasVideo = !!clip.videoUrl;
+  const isYT = clip.videoUrl ? isYouTubeUrl(clip.videoUrl) : false;
 
   return (
     <button
@@ -281,13 +347,13 @@ function ReelCard({
         {String(index + 1).padStart(2, "0")}
       </span>
 
-      {/* Source badge */}
-      {clip.sourceType === "youtube" && (
+      {/* Badge */}
+      {isYT && (
         <span className="absolute top-2.5 right-2.5 z-10 text-[9px] font-bold text-[#e11d48]/70 border border-[#e11d48]/20 px-1.5 py-px uppercase tracking-wider">
           YT
         </span>
       )}
-      {!hasVideo && clip.sourceType !== "youtube" && (
+      {!hasVideo && (
         <span className="absolute top-2.5 right-2.5 z-10 text-[9px] font-bold text-zinc-700 border border-[#2a2a2a] px-1.5 py-px uppercase tracking-wider">
           Soon
         </span>
@@ -325,12 +391,13 @@ function ReelRow({
   onClipClick: (clipIndex: number) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Newest first: higher order = newer, so reverse for display
   const displayClips = [...category.clips].reverse();
 
   const scroll = (dir: "left" | "right") => {
-    scrollRef.current?.scrollBy({ left: dir === "left" ? -230 : 230, behavior: "smooth" });
+    scrollRef.current?.scrollBy({
+      left: dir === "left" ? -230 : 230,
+      behavior: "smooth",
+    });
   };
 
   return (
@@ -359,7 +426,17 @@ function ReelRow({
             className="w-8 h-8 border border-[#1e1e1e] hover:border-zinc-600 text-zinc-700 hover:text-white flex items-center justify-center transition-colors duration-200"
             aria-label={`Scroll ${category.title} left`}
           >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
               <path d="M15 18l-6-6 6-6" />
             </svg>
           </button>
@@ -369,7 +446,17 @@ function ReelRow({
             className="w-8 h-8 border border-[#1e1e1e] hover:border-zinc-600 text-zinc-700 hover:text-white flex items-center justify-center transition-colors duration-200"
             aria-label={`Scroll ${category.title} right`}
           >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
               <path d="M9 18l6-6-6-6" />
             </svg>
           </button>
@@ -385,10 +472,13 @@ function ReelRow({
         aria-label={`${category.title} clips`}
       >
         {displayClips.map((clip, displayIndex) => {
-          // Map display index back to the correct modal index (in original sorted order)
           const originalIndex = category.clips.length - 1 - displayIndex;
           return (
-            <div key={clip.id} role="listitem" style={{ scrollSnapAlign: "start", flexShrink: 0 }}>
+            <div
+              key={clip.id}
+              role="listitem"
+              style={{ scrollSnapAlign: "start", flexShrink: 0 }}
+            >
               <ReelCard
                 clip={clip}
                 index={displayIndex}
@@ -399,13 +489,23 @@ function ReelRow({
           );
         })}
 
-        {/* "Add more" placeholder */}
+        {/* Add-clip placeholder */}
         <div
           className="flex-shrink-0 w-[144px] sm:w-[168px] border border-dashed border-[#1a1a1a] flex flex-col items-center justify-center gap-2"
           style={{ aspectRatio: "9/16" }}
           aria-hidden="true"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-zinc-800" aria-hidden="true">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            className="text-zinc-800"
+            aria-hidden="true"
+          >
             <path d="M12 5v14M5 12h14" />
           </svg>
           <span className="text-zinc-800 text-[9px] uppercase tracking-widest font-semibold">
@@ -421,7 +521,10 @@ function ReelRow({
 
 export default function VideoLibrary() {
   const [clips, setClips] = useState<Clip[]>([]);
-  const [modal, setModal] = useState<{ categoryIndex: number; clipIndex: number } | null>(null);
+  const [modal, setModal] = useState<{
+    categoryIndex: number;
+    clipIndex: number;
+  } | null>(null);
 
   useEffect(() => {
     fetch("/api/clips")
@@ -432,7 +535,6 @@ export default function VideoLibrary() {
       .catch(() => {});
   }, []);
 
-  // Group clips into categories, sorted by order within each category
   const categoriesWithClips: CategoryWithClips[] = CATEGORIES.map((cat) => ({
     ...cat,
     clips: clips
@@ -482,7 +584,17 @@ export default function VideoLibrary() {
               className="flex items-center gap-2 text-[#e11d48] text-xs font-bold uppercase tracking-[0.15em] hover:text-white transition-colors duration-200 shrink-0"
             >
               Request full match footage
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </a>
@@ -491,7 +603,6 @@ export default function VideoLibrary() {
 
         <div className="border-t border-[#111] mb-12" />
 
-        {/* Category rows — always all 6, empty ones just show the add-clip placeholder */}
         {categoriesWithClips.map((category, categoryIndex) => (
           <ReelRow
             key={category.id}

@@ -3,38 +3,25 @@
 /*
  * Admin dashboard — manage all video clips.
  *
- * Data is read/written through these API routes (all require admin cookie):
- *   GET    /api/clips             — public list (used here to load)
- *   POST   /api/admin/clips       — create a new clip
- *   PUT    /api/admin/clips       — batch save (reordering)
- *   PUT    /api/admin/clips/[id]  — update a single clip
- *   DELETE /api/admin/clips/[id]  — delete a clip
+ * Each clip has: title, category, description, video URL, thumbnail URL, order.
+ * Paste any YouTube link (or direct video URL) into the Video URL field.
  *
- * File uploads go directly to Vercel Blob via:
- *   POST   /api/admin/upload      — generates the Blob upload token
+ * Data API routes (all require the admin session cookie):
+ *   GET    /api/clips             — load clips
+ *   POST   /api/admin/clips       — create clip
+ *   PUT    /api/admin/clips       — batch save (used for reordering)
+ *   PUT    /api/admin/clips/[id]  — update single clip
+ *   DELETE /api/admin/clips/[id]  — delete clip
  *
- * Required environment variables (set in Vercel dashboard → Settings → Env Vars):
- *   ADMIN_PASSWORD        — protects this page and all admin API routes
- *   BLOB_READ_WRITE_TOKEN — set automatically when you connect Vercel Blob storage
+ * Required environment variables (Vercel dashboard → Settings → Env Vars):
+ *   ADMIN_PASSWORD        — protects this page
+ *   BLOB_READ_WRITE_TOKEN — set automatically when Vercel Blob storage is connected
  */
 
-import { useState, useEffect, useMemo } from "react";
-import { upload } from "@vercel/blob/client";
+import { useState, useEffect } from "react";
 import { logout } from "./actions";
 import { CATEGORIES } from "@/lib/categories";
 import type { Clip } from "@/lib/clips-store";
-
-// ── YouTube ID parser ─────────────────────────────────────────────────────────
-
-function parseYouTubeId(input: string): string | null {
-  const trimmed = input.trim();
-  const match = trimmed.match(
-    /(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([^&\s?/]+)/
-  );
-  if (match) return match[1];
-  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
-  return null;
-}
 
 // ── Reorder helper ────────────────────────────────────────────────────────────
 
@@ -50,7 +37,6 @@ function reorderClips(clips: Clip[], id: string, dir: "up" | "down"): Clip[] {
   const swapIdx = dir === "up" ? idx - 1 : idx + 1;
   if (swapIdx < 0 || swapIdx >= catClips.length) return clips;
 
-  // Swap in category array then renumber 0,1,2…
   [catClips[idx], catClips[swapIdx]] = [catClips[swapIdx], catClips[idx]];
   catClips.forEach((c, i) => {
     c.order = i;
@@ -59,14 +45,14 @@ function reorderClips(clips: Clip[], id: string, dir: "up" | "down"): Clip[] {
   return clips.map((c) => catClips.find((cc) => cc.id === c.id) ?? c);
 }
 
-// ── Form state type ───────────────────────────────────────────────────────────
+// ── Form types ────────────────────────────────────────────────────────────────
 
 type FormValues = {
   title: string;
   description: string;
   category: string;
-  sourceType: "upload" | "youtube";
-  youtubeInput: string;
+  videoUrl: string;
+  thumbnailUrl: string;
 };
 
 function emptyForm(defaultCategory: string): FormValues {
@@ -74,8 +60,8 @@ function emptyForm(defaultCategory: string): FormValues {
     title: "",
     description: "",
     category: defaultCategory,
-    sourceType: "upload",
-    youtubeInput: "",
+    videoUrl: "",
+    thumbnailUrl: "",
   };
 }
 
@@ -84,8 +70,8 @@ function clipToForm(clip: Clip): FormValues {
     title: clip.title,
     description: clip.description,
     category: clip.category,
-    sourceType: clip.sourceType,
-    youtubeInput: clip.youtubeId ?? "",
+    videoUrl: clip.videoUrl ?? "",
+    thumbnailUrl: clip.thumbnailUrl ?? "",
   };
 }
 
@@ -103,15 +89,7 @@ function ClipForm({
   onCancel: () => void;
 }) {
   const [values, setValues] = useState<FormValues>(defaultValues);
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState(0);
-
-  const parsedYoutubeId = useMemo(
-    () => parseYouTubeId(values.youtubeInput),
-    [values.youtubeInput]
-  );
 
   function set<K extends keyof FormValues>(key: K, val: FormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: val }));
@@ -119,71 +97,29 @@ function ClipForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
     if (!values.title.trim()) {
       alert("Title is required.");
       return;
     }
-    if (values.sourceType === "youtube" && !parsedYoutubeId) {
-      alert("Enter a valid YouTube URL or 11-character video ID.");
-      return;
-    }
-
     setBusy(true);
     try {
-      let videoUrl = existingClip?.videoUrl;
-      let thumbnailUrl = existingClip?.thumbnailUrl;
-
-      if (videoFile) {
-        const ext = videoFile.name.split(".").pop() ?? "mp4";
-        const key = `videos/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
-        setProgress(5);
-        const blob = await upload(key, videoFile, {
-          access: "public",
-          handleUploadUrl: "/api/admin/upload",
-          multipart: true,
-          onUploadProgress: ({ percentage }) =>
-            setProgress(Math.max(5, Math.round(percentage * 0.9))),
-        });
-        videoUrl = blob.url;
-        setProgress(95);
-      }
-
-      if (thumbFile) {
-        const ext = thumbFile.name.split(".").pop() ?? "jpg";
-        const key = `thumbnails/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
-        const blob = await upload(key, thumbFile, {
-          access: "public",
-          handleUploadUrl: "/api/admin/upload",
-        });
-        thumbnailUrl = blob.url;
-      }
-
-      // Auto-use YouTube thumbnail when no custom thumbnail is provided
-      if (values.sourceType === "youtube" && !thumbnailUrl && parsedYoutubeId) {
-        thumbnailUrl = `https://img.youtube.com/vi/${parsedYoutubeId}/hqdefault.jpg`;
-      }
-
       await onSave({
         title: values.title.trim(),
         description: values.description.trim(),
         category: values.category,
         order: existingClip?.order ?? 0,
-        sourceType: values.sourceType,
-        videoUrl: values.sourceType === "upload" ? videoUrl : undefined,
-        youtubeId:
-          values.sourceType === "youtube"
-            ? (parsedYoutubeId ?? undefined)
-            : undefined,
-        thumbnailUrl,
+        videoUrl: values.videoUrl.trim() || undefined,
+        thumbnailUrl: values.thumbnailUrl.trim() || undefined,
       });
     } catch (err) {
       alert(`Error: ${(err as Error).message}`);
     } finally {
       setBusy(false);
-      setProgress(0);
     }
   }
+
+  const inputClass =
+    "w-full bg-[#111] border border-[#222] text-white px-3 py-2.5 text-sm focus:outline-none focus:border-[#e11d48] transition-colors placeholder:text-zinc-700";
 
   return (
     <form
@@ -199,8 +135,8 @@ function ClipForm({
           type="text"
           value={values.title}
           onChange={(e) => set("title", e.target.value)}
-          placeholder="e.g. Right-foot finish"
-          className="w-full bg-[#111] border border-[#222] text-white px-3 py-2.5 text-sm focus:outline-none focus:border-[#e11d48] transition-colors"
+          placeholder="e.g. Right-foot finish from range"
+          className={inputClass}
           required
         />
       </div>
@@ -215,7 +151,7 @@ function ClipForm({
           onChange={(e) => set("description", e.target.value)}
           rows={2}
           placeholder="Short description shown in the viewer…"
-          className="w-full bg-[#111] border border-[#222] text-white px-3 py-2.5 text-sm focus:outline-none focus:border-[#e11d48] transition-colors resize-none"
+          className={`${inputClass} resize-none`}
         />
       </div>
 
@@ -227,7 +163,7 @@ function ClipForm({
         <select
           value={values.category}
           onChange={(e) => set("category", e.target.value)}
-          className="w-full bg-[#111] border border-[#222] text-white px-3 py-2.5 text-sm focus:outline-none focus:border-[#e11d48] transition-colors"
+          className={inputClass}
         >
           {CATEGORIES.map((cat) => (
             <option key={cat.id} value={cat.id}>
@@ -237,86 +173,39 @@ function ClipForm({
         </select>
       </div>
 
-      {/* Source type toggle */}
+      {/* Video URL */}
       <div>
-        <label className="block text-zinc-500 text-[10px] uppercase tracking-widest mb-2">
-          Video Source
+        <label className="block text-zinc-500 text-[10px] uppercase tracking-widest mb-1.5">
+          Video URL
         </label>
-        <div className="flex gap-2">
-          {(["upload", "youtube"] as const).map((type) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => set("sourceType", type)}
-              className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-colors ${
-                values.sourceType === type
-                  ? "border-[#e11d48] text-white bg-[#e11d48]/10"
-                  : "border-[#2a2a2a] text-zinc-600 hover:text-zinc-400"
-              }`}
-            >
-              {type === "upload" ? "Upload File" : "YouTube Link"}
-            </button>
-          ))}
-        </div>
+        <input
+          type="text"
+          value={values.videoUrl}
+          onChange={(e) => set("videoUrl", e.target.value)}
+          placeholder="https://youtu.be/... or https://youtube.com/watch?v=..."
+          className={inputClass}
+        />
+        <p className="text-zinc-700 text-[10px] mt-1">
+          YouTube, Vimeo, Google Drive, or any direct video URL
+        </p>
       </div>
 
-      {/* YouTube input */}
-      {values.sourceType === "youtube" && (
-        <div>
-          <label className="block text-zinc-500 text-[10px] uppercase tracking-widest mb-1.5">
-            YouTube URL or Video ID *
-          </label>
-          <input
-            type="text"
-            value={values.youtubeInput}
-            onChange={(e) => set("youtubeInput", e.target.value)}
-            placeholder="https://youtu.be/VIDEO_ID  or  VIDEO_ID"
-            className="w-full bg-[#111] border border-[#222] text-white px-3 py-2.5 text-sm focus:outline-none focus:border-[#e11d48] transition-colors font-mono"
-          />
-          {values.youtubeInput && (
-            <p
-              className={`mt-1 text-[10px] ${parsedYoutubeId ? "text-green-400" : "text-[#e11d48]"}`}
-            >
-              {parsedYoutubeId ? `✓ ID: ${parsedYoutubeId}` : "✗ Invalid YouTube URL or ID"}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Video file upload (upload type only) */}
-      {values.sourceType === "upload" && (
-        <FileField
-          label="Video file (.mov, .mp4, .webm)"
-          accept="video/*,.mov"
-          currentUrl={existingClip?.videoUrl}
-          onChange={setVideoFile}
+      {/* Thumbnail URL */}
+      <div>
+        <label className="block text-zinc-500 text-[10px] uppercase tracking-widest mb-1.5">
+          Thumbnail URL{" "}
+          <span className="normal-case font-normal text-zinc-700">
+            (optional)
+          </span>
+        </label>
+        <input
+          type="text"
+          value={values.thumbnailUrl}
+          onChange={(e) => set("thumbnailUrl", e.target.value)}
+          placeholder="https://... (leave blank for default)"
+          className={inputClass}
         />
-      )}
-
-      {/* Thumbnail (always) */}
-      <FileField
-        label={
-          values.sourceType === "youtube"
-            ? "Custom thumbnail (optional — auto-uses YouTube thumbnail)"
-            : "Thumbnail (.jpg, .png, .webp)"
-        }
-        accept="image/*"
-        currentUrl={existingClip?.thumbnailUrl}
-        onChange={setThumbFile}
-      />
-
-      {/* Progress */}
-      {busy && progress > 0 && (
-        <div className="space-y-1">
-          <div className="h-1 bg-[#1a1a1a] overflow-hidden">
-            <div
-              className="h-full bg-[#e11d48] transition-all duration-200"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <p className="text-zinc-600 text-[10px]">{progress}% uploading…</p>
-        </div>
-      )}
+      </div>
 
       {/* Actions */}
       <div className="flex items-center gap-3 pt-1">
@@ -340,52 +229,6 @@ function ClipForm({
   );
 }
 
-// ── FileField ─────────────────────────────────────────────────────────────────
-
-function FileField({
-  label,
-  accept,
-  currentUrl,
-  onChange,
-}: {
-  label: string;
-  accept: string;
-  currentUrl?: string;
-  onChange: (f: File | null) => void;
-}) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-zinc-500 text-[10px] uppercase tracking-widest">
-          {label}
-        </span>
-        {currentUrl && (
-          <a
-            href={currentUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[#e11d48] text-[10px] uppercase tracking-wide hover:underline"
-          >
-            Current ↗
-          </a>
-        )}
-      </div>
-      <input
-        type="file"
-        accept={accept}
-        onChange={(e) => onChange(e.target.files?.[0] ?? null)}
-        className="w-full text-sm text-zinc-500 file:mr-3 file:py-1.5 file:px-3 file:border file:border-[#2a2a2a] file:bg-[#111] file:text-zinc-400 file:text-xs file:uppercase file:tracking-wide hover:file:border-zinc-600 file:cursor-pointer"
-      />
-      {currentUrl && (
-        <p className="text-zinc-700 text-[10px] mt-1 truncate">
-          {currentUrl.startsWith("http") ? "Uploaded" : "Local file"}:{" "}
-          <span className="font-mono">{currentUrl.split("/").pop()}</span>
-        </p>
-      )}
-    </div>
-  );
-}
-
 // ── ClipRow ───────────────────────────────────────────────────────────────────
 
 function ClipRow({
@@ -403,10 +246,6 @@ function ClipRow({
   onDelete: () => void;
   onMove: (dir: "up" | "down") => void;
 }) {
-  const hasVideo =
-    clip.sourceType === "youtube" ? !!clip.youtubeId : !!clip.videoUrl;
-  const hasThumb = !!clip.thumbnailUrl;
-
   return (
     <div className="flex items-center gap-3 px-4 py-3.5 border border-[#1e1e1e] bg-[#0d0d0d]">
       {/* Order arrows */}
@@ -418,7 +257,16 @@ function ClipRow({
           className="text-zinc-700 hover:text-zinc-400 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
           aria-label="Move up"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
             <path d="M18 15l-6-6-6 6" />
           </svg>
         </button>
@@ -429,32 +277,38 @@ function ClipRow({
           className="text-zinc-700 hover:text-zinc-400 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
           aria-label="Move down"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
             <path d="M6 9l6 6 6-6" />
           </svg>
         </button>
       </div>
 
-      {/* Title + badges */}
+      {/* Title + status */}
       <div className="flex-1 min-w-0">
         <p className="font-heading font-bold text-white uppercase text-sm leading-tight truncate">
-          {clip.title || <span className="text-zinc-600 italic normal-case font-normal">Untitled</span>}
+          {clip.title || (
+            <span className="text-zinc-600 italic normal-case font-normal">
+              Untitled
+            </span>
+          )}
         </p>
         <div className="flex items-center gap-2 mt-1">
-          <span className={`text-[9px] font-bold px-1.5 py-px uppercase tracking-wide ${
-            clip.sourceType === "youtube"
-              ? "text-[#e11d48] bg-[#e11d48]/10"
-              : "text-blue-400 bg-blue-400/10"
-          }`}>
-            {clip.sourceType === "youtube" ? "YouTube" : "Upload"}
-          </span>
-          <StatusBadge ok={hasVideo} label="video" />
-          <StatusBadge ok={hasThumb} label="thumb" />
+          <Badge ok={!!clip.videoUrl} label="video" />
+          <Badge ok={!!clip.thumbnailUrl} label="thumb" />
         </div>
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-3 shrink-0">
         <button
           type="button"
           onClick={onEdit}
@@ -468,7 +322,16 @@ function ClipRow({
           className="text-zinc-700 hover:text-[#e11d48] transition-colors"
           aria-label="Delete clip"
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
             <path d="M18 6L6 18M6 6l12 12" />
           </svg>
         </button>
@@ -477,11 +340,13 @@ function ClipRow({
   );
 }
 
-function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
+function Badge({ ok, label }: { ok: boolean; label: string }) {
   return (
-    <span className={`text-[9px] font-bold px-1.5 py-px uppercase tracking-wide ${
-      ok ? "text-green-400 bg-green-400/10" : "text-zinc-700 bg-[#141414]"
-    }`}>
+    <span
+      className={`text-[9px] font-bold px-1.5 py-px uppercase tracking-wide ${
+        ok ? "text-green-400 bg-green-400/10" : "text-zinc-700 bg-[#141414]"
+      }`}
+    >
       {ok ? "✓" : "✗"} {label}
     </span>
   );
@@ -510,10 +375,11 @@ export default function AdminDashboard() {
     .sort((a, b) => a.order - b.order);
 
   async function handleCreate(data: Omit<Clip, "id">) {
-    const maxOrder = categoryClips.length > 0
-      ? Math.max(...categoryClips.map((c) => c.order))
-      : -1;
-    const payload = { ...data, category: data.category, order: maxOrder + 1 };
+    const maxOrder =
+      categoryClips.length > 0
+        ? Math.max(...categoryClips.map((c) => c.order))
+        : -1;
+    const payload = { ...data, order: maxOrder + 1 };
 
     const res = await fetch("/api/admin/clips", {
       method: "POST",
@@ -562,7 +428,6 @@ export default function AdminDashboard() {
         body: JSON.stringify(reordered),
       });
     } catch {
-      // Revert on failure
       setClips(clips);
     } finally {
       setReordering(false);
@@ -589,7 +454,17 @@ export default function AdminDashboard() {
             href="/"
             className="flex items-center gap-1.5 text-zinc-600 hover:text-white text-xs uppercase tracking-widest transition-colors"
           >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
               <path d="M15 18l-6-6 6-6" />
             </svg>
             Main page
@@ -659,7 +534,16 @@ export default function AdminDashboard() {
           }}
           className="w-full mb-3 border border-dashed border-[#2a2a2a] hover:border-[#e11d48]/50 text-zinc-700 hover:text-[#e11d48] text-xs font-bold uppercase tracking-widest py-3 transition-colors duration-200 flex items-center justify-center gap-2"
         >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+          <svg
+            width="11"
+            height="11"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
             <path d="M12 5v14M5 12h14" />
           </svg>
           Add clip to {CATEGORIES.find((c) => c.id === activeTab)?.title}
@@ -674,48 +558,46 @@ export default function AdminDashboard() {
           </p>
         )}
 
-        {categoryClips.map((clip, i) => (
-          <div key={clip.id}>
-            {editingId === clip.id ? (
-              <div className="mb-1">
-                <p className="text-zinc-500 text-[10px] uppercase tracking-widest font-bold mb-2">
-                  Editing: {clip.title}
-                </p>
-                <ClipForm
-                  defaultValues={clipToForm(clip)}
-                  existingClip={clip}
-                  onSave={(data) => handleUpdate(clip.id, data)}
-                  onCancel={() => setEditingId(null)}
-                />
-              </div>
-            ) : (
-              <ClipRow
-                clip={clip}
-                isFirst={i === 0}
-                isLast={i === categoryClips.length - 1}
-                onEdit={() => {
-                  setEditingId(clip.id);
-                  setIsCreating(false);
-                }}
-                onDelete={() => handleDelete(clip.id)}
-                onMove={(dir) => handleReorder(clip.id, dir)}
+        {categoryClips.map((clip, i) =>
+          editingId === clip.id ? (
+            <div key={clip.id} className="mb-1">
+              <p className="text-zinc-500 text-[10px] uppercase tracking-widest font-bold mb-2">
+                Editing: {clip.title}
+              </p>
+              <ClipForm
+                defaultValues={clipToForm(clip)}
+                existingClip={clip}
+                onSave={(data) => handleUpdate(clip.id, data)}
+                onCancel={() => setEditingId(null)}
               />
-            )}
-          </div>
-        ))}
+            </div>
+          ) : (
+            <ClipRow
+              key={clip.id}
+              clip={clip}
+              isFirst={i === 0}
+              isLast={i === categoryClips.length - 1}
+              onEdit={() => {
+                setEditingId(clip.id);
+                setIsCreating(false);
+              }}
+              onDelete={() => handleDelete(clip.id)}
+              onMove={(dir) => handleReorder(clip.id, dir)}
+            />
+          )
+        )}
       </div>
 
       {/* Footer */}
-      <div className="mt-10 space-y-1.5 text-zinc-700 text-xs leading-relaxed">
+      <div className="mt-10 space-y-1 text-zinc-700 text-xs leading-relaxed">
         <p>
-          {reordering ? "Saving order…" : "Clips are ordered top-to-bottom in each category."}
+          {reordering
+            ? "Saving order…"
+            : "Clips display newest-first on the public site (highest order = newest)."}
         </p>
         <p>
-          Files upload directly to Vercel Blob — no redeploy needed.
-          YouTube clips embed live from YouTube.
-        </p>
-        <p className="text-zinc-800">
-          Env vars needed: <code>ADMIN_PASSWORD</code>, <code>BLOB_READ_WRITE_TOKEN</code>
+          Paste any YouTube link into the Video URL field — no special format
+          needed.
         </p>
       </div>
     </div>

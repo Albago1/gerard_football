@@ -24,9 +24,9 @@ export type Clip = {
   description: string;
   category: string;
   order: number;
-  sourceType: "upload" | "youtube";
-  videoUrl?: string;    // Blob URL or /videos/... local path (upload)
-  youtubeId?: string;   // 11-char YouTube video ID (youtube)
+  // Any URL: YouTube link, Vimeo, Google Drive, or a direct video file URL.
+  // The frontend auto-detects the type from the URL and picks the right player.
+  videoUrl?: string;
   thumbnailUrl?: string;
 };
 
