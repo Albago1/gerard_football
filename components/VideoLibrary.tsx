@@ -391,11 +391,12 @@ function ReelRow({
   onClipClick: (clipIndex: number) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const displayClips = [...category.clips].reverse();
+  // Display order matches admin order: top of admin list = leftmost on site
+  const displayClips = [...category.clips];
 
   const scroll = (dir: "left" | "right") => {
     scrollRef.current?.scrollBy({
-      left: dir === "left" ? -230 : 230,
+      left: dir === "left" ? -180 : 180,
       behavior: "smooth",
     });
   };
@@ -463,31 +464,28 @@ function ReelRow({
         </div>
       </div>
 
-      {/* Horizontal scroll strip */}
+      {/* Horizontal scroll strip — free scroll (no snap) so it never gets stuck */}
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto px-5 sm:px-8 pb-2 scrollbar-hide"
-        style={{ scrollSnapType: "x mandatory" }}
+        className="flex gap-3 overflow-x-auto px-5 sm:px-8 pb-3 scrollbar-hide"
+        style={{ touchAction: "pan-x" }}
         role="list"
         aria-label={`${category.title} clips`}
       >
-        {displayClips.map((clip, displayIndex) => {
-          const originalIndex = category.clips.length - 1 - displayIndex;
-          return (
-            <div
-              key={clip.id}
-              role="listitem"
-              style={{ scrollSnapAlign: "start", flexShrink: 0 }}
-            >
-              <ReelCard
-                clip={clip}
-                index={displayIndex}
-                categoryTitle={category.title}
-                onClick={() => onClipClick(originalIndex)}
-              />
-            </div>
-          );
-        })}
+        {displayClips.map((clip, displayIndex) => (
+          <div
+            key={clip.id}
+            role="listitem"
+            className="shrink-0"
+          >
+            <ReelCard
+              clip={clip}
+              index={displayIndex}
+              categoryTitle={category.title}
+              onClick={() => onClipClick(displayIndex)}
+            />
+          </div>
+        ))}
 
         {/* Add-clip placeholder */}
         <div
