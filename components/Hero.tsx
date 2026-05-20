@@ -62,19 +62,6 @@ export default function Hero() {
           </a>
         </div>
 
-        <div className="animate-fade-up animation-delay-500 flex flex-wrap gap-8 sm:gap-12 mt-12 pt-8 border-t border-zinc-800/50">
-          {[
-            { label: h.stats.height, value: "187 cm" },
-            { label: h.stats.weight, value: "78 kg" },
-            { label: h.stats.rightFoot, value: "10 / 10" },
-            { label: h.stats.leftFoot, value: "8 / 10" },
-          ].map(({ label, value }) => (
-            <div key={label}>
-              <div className="text-zinc-600 text-[10px] uppercase tracking-[0.2em] mb-1.5 font-medium">{label}</div>
-              <div className="font-heading font-bold text-white text-lg sm:text-xl">{value}</div>
-            </div>
-          ))}
-        </div>
       </div>
 
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2" aria-hidden="true">
