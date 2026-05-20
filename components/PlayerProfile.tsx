@@ -3,29 +3,31 @@
 import { useLang } from "@/lib/i18n";
 
 const CLUBS = [
-  { name: "KF Tirana",         ageGroup: "U13", initials: "KFT", color: "#ef4444" },
-  { name: "KF Tirana",         ageGroup: "U15", initials: "KFT", color: "#ef4444" },
-  { name: "Blau Weiss Berlin", ageGroup: "U15", initials: "BWB", color: "#3b82f6" },
-  { name: "Berliner SC",       ageGroup: "U17", initials: "BSC", color: "#818cf8" },
-  { name: "Berliner SC",       ageGroup: "U18", initials: "BSC", color: "#818cf8" },
-  { name: "SC Staaken",        ageGroup: "U18", initials: "SCS", color: "#e11d48" },
-  { name: "SC Staaken",        ageGroup: "U19", initials: "SCS", color: "#e11d48" },
+  { name: "KF Tirana",         ageGroup: "U13", initials: "KFT", color: "#ef4444", logo: "/clubs/kf-tirana.png" },
+  { name: "KF Tirana",         ageGroup: "U15", initials: "KFT", color: "#ef4444", logo: "/clubs/kf-tirana.png" },
+  { name: "Blau Weiss Berlin", ageGroup: "U15", initials: "BWB", color: "#3b82f6", logo: "/clubs/blau-weiss-berlin.png" },
+  { name: "Berliner SC",       ageGroup: "U17", initials: "BSC", color: "#818cf8", logo: "/clubs/berliner-sc.png" },
+  { name: "Berliner SC",       ageGroup: "U18", initials: "BSC", color: "#818cf8", logo: "/clubs/berliner-sc.png" },
+  { name: "SC Staaken",        ageGroup: "U18", initials: "SCS", color: "#e11d48", logo: "/clubs/sc-staaken.png" },
+  { name: "SC Staaken",        ageGroup: "U19", initials: "SCS", color: "#e11d48", logo: "/clubs/sc-staaken.png" },
 ];
 
-function Shield({ initials, color }: { initials: string; color: string }) {
+function ClubLogo({ logo, initials, color, name }: { logo: string; initials: string; color: string; name: string }) {
   return (
-    <div className="relative w-14 h-14 mx-auto mb-3 flex items-center justify-center">
-      <svg viewBox="0 0 50 58" className="absolute inset-0 w-full h-full" aria-hidden="true">
-        <path
-          d="M25 2L3 11v19c0 14.5 10 24 22 26 12-2 22-11.5 22-26V11L25 2z"
-          fill={color}
-          fillOpacity="0.12"
-          stroke={color}
-          strokeWidth="1.5"
-          strokeOpacity="0.5"
-        />
-      </svg>
-      <span className="relative font-heading font-black text-[10px] tracking-wider" style={{ color }}>
+    <div className="w-14 h-14 mx-auto mb-3 flex items-center justify-center">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={logo}
+        alt={name}
+        className="w-full h-full object-contain"
+        onError={(e) => {
+          // fallback to initials shield if image fails
+          const el = e.currentTarget;
+          el.style.display = "none";
+          el.nextElementSibling?.removeAttribute("hidden");
+        }}
+      />
+      <span hidden className="font-heading font-black text-[10px] tracking-wider" style={{ color }}>
         {initials}
       </span>
     </div>
@@ -132,7 +134,7 @@ export default function PlayerProfile() {
                 key={i}
                 className="shrink-0 flex flex-col items-center bg-[#0d0d0d] border border-[#1e1e1e] hover:border-[#2a2a2a] transition-colors duration-200 p-5 w-[130px] sm:w-[148px]"
               >
-                <Shield initials={club.initials} color={club.color} />
+                <ClubLogo logo={club.logo} initials={club.initials} color={club.color} name={club.name} />
                 <p className="text-white font-heading font-bold text-[11px] sm:text-xs uppercase leading-tight tracking-wide text-center mb-2.5">
                   {club.name}
                 </p>
