@@ -1,20 +1,4 @@
-/*
- * Clips data store — single source of truth for all clip metadata.
- *
- * Storage location:
- *   Production (Vercel):  "data/clips.json" in Vercel Blob.
- *   Local development:    data/clips.json on disk (gitignored).
- *
- * Required environment variables:
- *   BLOB_READ_WRITE_TOKEN  — set automatically when you connect Vercel Blob storage
- *                            (Vercel dashboard → Storage → Create → Blob)
- *
- * Video and thumbnail files themselves are stored in Vercel Blob under:
- *   videos/{timestamp}-{random}.{ext}
- *   thumbnails/{timestamp}-{random}.{ext}
- */
-
-import { put, list } from "@vercel/blob";
+import { put, list, get } from "@vercel/blob";
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
 
@@ -24,8 +8,6 @@ export type Clip = {
   description: string;
   category: string;
   order: number;
-  // Any URL: YouTube link, Vimeo, Google Drive, or a direct video file URL.
-  // The frontend auto-detects the type from the URL and picks the right player.
   videoUrl?: string;
   thumbnailUrl?: string;
 };
@@ -38,12 +20,13 @@ export async function getClips(): Promise<Clip[]> {
     try {
       const { blobs } = await list({ prefix: BLOB_PATH });
       if (blobs.length === 0) return [];
-      // Cache-bust so we never read a stale CDN copy
-      const res = await fetch(`${blobs[0].url}?t=${Date.now()}`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
+
+      // Use get() so it works with both public and private stores
+      const result = await get(blobs[0].url, { access: "private" });
+      if (!result || !result.stream) return [];
+
+      const text = await new Response(result.stream).text();
+      const data = JSON.parse(text);
       return Array.isArray(data) ? data : [];
     } catch {
       return [];
@@ -65,7 +48,7 @@ export async function saveClips(clips: Clip[]): Promise<void> {
 
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     await put(BLOB_PATH, body, {
-      access: "public",
+      access: "private",
       addRandomSuffix: false,
       allowOverwrite: true,
       contentType: "application/json",

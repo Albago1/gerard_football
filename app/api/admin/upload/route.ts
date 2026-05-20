@@ -33,10 +33,13 @@ export async function POST(request: Request) {
 
   try {
     const blob = await put(file.name, file, {
-      access: "public",
+      access: "private",
       addRandomSuffix: true,
     });
-    return Response.json({ url: blob.url });
+
+    // Return a proxy URL so browsers can load private blob assets
+    const proxyUrl = `/api/media-proxy?url=${encodeURIComponent(blob.url)}`;
+    return Response.json({ url: proxyUrl });
   } catch (err) {
     return Response.json({ error: (err as Error).message }, { status: 500 });
   }
