@@ -1,4 +1,4 @@
-import { put } from "@vercel/blob";
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { cookies } from "next/headers";
 
 const ALLOWED_TYPES = [
@@ -10,6 +10,12 @@ const ALLOWED_TYPES = [
   "image/webp",
 ];
 
+// This route handles two phases of a client-side direct upload:
+//   1. Token generation  — browser sends { type: "blob.generate-client-token" }
+//   2. Upload completion — browser sends { type: "blob.upload-completed" }
+// The browser then uploads the file straight to Vercel Blob (no function body
+// size limit), so large video files work fine.
+
 export async function POST(request: Request) {
   const store = await cookies();
   const isAuthed =
@@ -20,27 +26,23 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const formData = await request.formData();
-  const file = formData.get("file") as File | null;
-
-  if (!file) {
-    return Response.json({ error: "No file provided" }, { status: 400 });
-  }
-
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    return Response.json({ error: "File type not allowed" }, { status: 400 });
-  }
+  const body = (await request.json()) as HandleUploadBody;
 
   try {
-    // Public blobs are served directly from Vercel's CDN — native range-request
-    // support, no proxy hop, works on all mobile browsers out of the box.
-    const blob = await put(file.name, file, {
-      access: "public",
-      addRandomSuffix: true,
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async () => ({
+        allowedContentTypes: ALLOWED_TYPES,
+        maximumSizeInBytes: 500 * 1024 * 1024, // 500 MB
+        addRandomSuffix: true,
+      }),
+      onUploadCompleted: async () => {
+        // nothing extra needed — caller gets blob.url directly
+      },
     });
-
-    return Response.json({ url: blob.url });
+    return Response.json(jsonResponse);
   } catch (err) {
-    return Response.json({ error: (err as Error).message }, { status: 500 });
+    return Response.json({ error: (err as Error).message }, { status: 400 });
   }
 }
