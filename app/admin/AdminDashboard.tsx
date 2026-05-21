@@ -19,7 +19,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { put } from "@vercel/blob/client";
+import { upload } from "@vercel/blob/client";
 import { logout } from "./actions";
 import { CATEGORIES } from "@/lib/categories";
 import type { Clip } from "@/lib/clips-store";
@@ -107,22 +107,13 @@ function ClipForm({
   ) {
     setUploading(true);
     try {
-      // Step 1: get a short-lived upload token from our server (tiny JSON request)
-      const tokenRes = await fetch("/api/admin/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: file.name }),
-      });
-      if (!tokenRes.ok) {
-        const data = await tokenRes.json();
-        throw new Error(data.error ?? "Failed to get upload token");
-      }
-      const { clientToken } = await tokenRes.json();
-
-      // Step 2: browser PUTs the file straight to Vercel Blob — no size limit
-      const blob = await put(file.name, file, {
+      // upload() handles CORS correctly — it hits blob.vercel-storage.com
+      // (not vercel.com/api/blob which blocks cross-origin requests).
+      // Our route handles token generation (phase 1) and the completion
+      // ping (phase 2) without any internal handleUpload validation issues.
+      const blob = await upload(file.name, file, {
         access: "public",
-        token: clientToken,
+        handleUploadUrl: "/api/admin/upload",
       });
 
       set(field, blob.url);
