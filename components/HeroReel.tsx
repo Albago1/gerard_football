@@ -84,6 +84,22 @@ function FeaturedPlayer({ clip, onEnded, onProgress }: FeaturedProps) {
     }
   }, [embed.kind]);
 
+  // Some desktop browsers ignore the autoPlay attribute on mount if `muted`
+  // wasn't synchronously true at the time the element was attached to the
+  // DOM (a React quirk). Force muted + .play() imperatively as a backup.
+  useEffect(() => {
+    if (embed.kind !== "video") return;
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = true;
+    v.defaultMuted = true;
+    const tryPlay = () => v.play().catch(() => {});
+    tryPlay();
+    // Retry shortly after — by then any metadata load is usually done.
+    const t = setTimeout(tryPlay, 250);
+    return () => clearTimeout(t);
+  }, [embed.kind, clip.videoUrl]);
+
   // YouTube / Vimeo embed src — autoplay muted, looped (parent advances on a timer)
   let iframeSrc: string | null = null;
   if (embed.kind === "youtube") {
@@ -353,8 +369,10 @@ export default function HeroReel() {
         {/* Layout */}
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
 
-          {/* Featured clip — 9:16, real-time progress bar at bottom */}
-          <div className="w-full lg:w-auto lg:flex-shrink-0 relative" style={{ maxWidth: "300px" }}>
+          {/* Featured clip — 9:16, real-time progress bar at bottom.
+              Explicit width on desktop so the inner aspect-ratio div doesn't
+              collapse to 0 inside the flex row. */}
+          <div className="w-full lg:w-[300px] lg:flex-shrink-0 mx-auto lg:mx-0 relative" style={{ maxWidth: "300px" }}>
             <FeaturedPlayer
               key={`${featured}-${featuredClip.id}`}
               clip={featuredClip}
