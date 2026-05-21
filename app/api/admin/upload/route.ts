@@ -10,16 +10,15 @@ const ALLOWED_TYPES = [
   "image/webp",
 ];
 
-// Two-phase client upload — both phases are called by the BROWSER:
+// upload() from @vercel/blob/client drives two phases:
 //
-//   Phase 1 "blob.generate-client-token"
-//     Browser asks for a signed upload token. We auth-guard this.
-//     Returns { clientToken } in the exact shape upload() expects.
+//   Phase 1 "blob.generate-client-token"  — called by the BROWSER
+//     We auth-guard this. We generate a signed client token that encodes
+//     the callbackUrl — Vercel Blob needs this to know where to POST after
+//     the upload lands. Without it the PUT returns 400 (no CORS headers).
 //
-//   Phase 2 "blob.upload-completed"
-//     Browser notifies us after the file lands on Vercel Blob.
-//     No auth needed — the upload already happened. Just return {}.
-//     We skip handleUpload() here to avoid its internal validation throwing.
+//   Phase 2 "blob.upload-completed"  — called by VERCEL BLOB SERVERS
+//     No browser cookie is sent. We just return {} immediately.
 
 export async function POST(request: Request) {
   const body = await request.json() as {
@@ -39,22 +38,29 @@ export async function POST(request: Request) {
     }
 
     const pathname = body.payload?.pathname ?? "upload";
+    // Use the callbackUrl the browser sends so it's encoded in the token —
+    // Vercel Blob validates this field is present before accepting the upload.
+    const callbackUrl =
+      body.payload?.callbackUrl ??
+      `${new URL(request.url).origin}/api/admin/upload`;
 
     const clientToken = await generateClientTokenFromReadWriteToken({
       pathname,
       allowedContentTypes: ALLOWED_TYPES,
       maximumSizeInBytes: 500 * 1024 * 1024, // 500 MB
       addRandomSuffix: true,
-      // Token valid for 10 min — long enough for large video uploads to start
-      validUntil: Date.now() + 10 * 60 * 1000,
+      validUntil: Date.now() + 10 * 60 * 1000, // 10 min
+      onUploadCompleted: {
+        callbackUrl,
+        tokenPayload: "",
+      },
     });
 
     return Response.json({ clientToken });
   }
 
-  // ── Phase 2: upload complete notification ─────────────────────────────────
+  // ── Phase 2: upload complete — called by Vercel Blob servers, no cookie ──
   if (body.type === "blob.upload-completed") {
-    // Nothing to do server-side. upload() will return the blob URL to the browser.
     return Response.json({});
   }
 
