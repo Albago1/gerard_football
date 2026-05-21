@@ -11,22 +11,29 @@ const ALLOWED_TYPES = [
 ];
 
 // This route handles two phases of a client-side direct upload:
-//   1. Token generation  — browser sends { type: "blob.generate-client-token" }
-//   2. Upload completion — browser sends { type: "blob.upload-completed" }
-// The browser then uploads the file straight to Vercel Blob (no function body
-// size limit), so large video files work fine.
+//
+//   Phase 1 — "blob.generate-client-token"
+//     Called by the browser. We enforce the admin cookie here.
+//     Returns a short-lived upload token so the browser can go direct to Blob.
+//
+//   Phase 2 — "blob.upload-completed"
+//     Called server-to-server by Vercel Blob's infrastructure after the file
+//     lands. They don't carry a browser cookie, so we must NOT apply the cookie
+//     check here — handleUpload authenticates this phase with the blob token.
 
 export async function POST(request: Request) {
-  const store = await cookies();
-  const isAuthed =
-    !!process.env.ADMIN_PASSWORD &&
-    store.get("admin_token")?.value === process.env.ADMIN_PASSWORD;
-
-  if (!isAuthed) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const body = (await request.json()) as HandleUploadBody;
+
+  if (body.type === "blob.generate-client-token") {
+    const store = await cookies();
+    const isAuthed =
+      !!process.env.ADMIN_PASSWORD &&
+      store.get("admin_token")?.value === process.env.ADMIN_PASSWORD;
+
+    if (!isAuthed) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
 
   try {
     const jsonResponse = await handleUpload({
@@ -38,7 +45,7 @@ export async function POST(request: Request) {
         addRandomSuffix: true,
       }),
       onUploadCompleted: async () => {
-        // nothing extra needed — caller gets blob.url directly
+        // Nothing extra needed — the client gets blob.url directly.
       },
     });
     return Response.json(jsonResponse);
