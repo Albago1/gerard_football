@@ -32,14 +32,14 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Public blobs are served directly from Vercel's CDN — native range-request
+    // support, no proxy hop, works on all mobile browsers out of the box.
     const blob = await put(file.name, file, {
-      access: "private",
+      access: "public",
       addRandomSuffix: true,
     });
 
-    // Return a proxy URL so browsers can load private blob assets
-    const proxyUrl = `/api/media-proxy?url=${encodeURIComponent(blob.url)}`;
-    return Response.json({ url: proxyUrl });
+    return Response.json({ url: blob.url });
   } catch (err) {
     return Response.json({ error: (err as Error).message }, { status: 500 });
   }
