@@ -19,7 +19,6 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { upload } from "@vercel/blob/client";
 import { logout } from "./actions";
 import { CATEGORIES } from "@/lib/categories";
 import type { Clip } from "@/lib/clips-store";
@@ -107,16 +106,61 @@ function ClipForm({
   ) {
     setUploading(true);
     try {
-      // upload() handles CORS correctly — it hits blob.vercel-storage.com
-      // (not vercel.com/api/blob which blocks cross-origin requests).
-      // Our route handles token generation (phase 1) and the completion
-      // ping (phase 2) without any internal handleUpload validation issues.
-      const blob = await upload(file.name, file, {
-        access: "public",
-        handleUploadUrl: "/api/admin/upload",
-      });
+      const isVideo = file.type.startsWith("video/");
 
-      set(field, blob.url);
+      if (!isVideo) {
+        // Images are small — simple FormData POST, server calls put() directly
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
+        if (!res.ok) throw new Error((await res.json()).error ?? "Upload failed");
+        const { url } = await res.json();
+        set(field, url);
+        return;
+      }
+
+      // Videos: chunked multipart upload — each chunk goes through our route
+      // (no CORS issues, no browser→Blob direct calls)
+      const CHUNK = 4 * 1024 * 1024; // 4 MB — under Vercel's 4.5 MB body limit
+      const total = Math.ceil(file.size / CHUNK);
+
+      // 1. Init
+      const initRes = await fetch("/api/admin/upload?action=init", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, contentType: file.type }),
+      });
+      if (!initRes.ok) throw new Error((await initRes.json()).error ?? "Init failed");
+      const { key, uploadId } = await initRes.json();
+
+      // 2. Upload chunks
+      const parts: { etag: string; partNumber: number }[] = [];
+      for (let i = 0; i < total; i++) {
+        const chunk = file.slice(i * CHUNK, (i + 1) * CHUNK);
+        const params = new URLSearchParams({
+          action: "part",
+          key,
+          uploadId,
+          partNumber: String(i + 1),
+        });
+        const partRes = await fetch(`/api/admin/upload?${params}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/octet-stream" },
+          body: chunk,
+        });
+        if (!partRes.ok) throw new Error(`Chunk ${i + 1}/${total} failed`);
+        parts.push(await partRes.json());
+      }
+
+      // 3. Complete
+      const completeRes = await fetch("/api/admin/upload?action=complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key, uploadId, parts }),
+      });
+      if (!completeRes.ok) throw new Error((await completeRes.json()).error ?? "Complete failed");
+      const { url } = await completeRes.json();
+      set(field, url);
     } catch (err) {
       alert(`Upload failed: ${(err as Error).message}`);
     } finally {

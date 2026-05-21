@@ -1,68 +1,89 @@
-import { generateClientTokenFromReadWriteToken } from "@vercel/blob/client";
+import { put, createMultipartUpload, uploadPart, completeMultipartUpload } from "@vercel/blob";
 import { cookies } from "next/headers";
+import { type NextRequest } from "next/server";
 
-const ALLOWED_TYPES = [
-  "video/mp4",
-  "video/quicktime",
-  "video/webm",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-];
+// Vercel serverless functions have a 4.5 MB request body limit.
+// Images are always small — server-side put() works fine.
+// Videos can be large — we split them into 4 MB chunks client-side,
+// proxy each chunk through this route, and stitch them on Vercel Blob
+// using multipart upload (server → Blob, no CORS issues).
 
-// upload() from @vercel/blob/client drives two phases:
-//
-//   Phase 1 "blob.generate-client-token"  — called by the BROWSER
-//     We auth-guard this. We generate a signed client token that encodes
-//     the callbackUrl — Vercel Blob needs this to know where to POST after
-//     the upload lands. Without it the PUT returns 400 (no CORS headers).
-//
-//   Phase 2 "blob.upload-completed"  — called by VERCEL BLOB SERVERS
-//     No browser cookie is sent. We just return {} immediately.
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
+const ALLOWED_TYPES = [...IMAGE_TYPES, ...VIDEO_TYPES];
 
-export async function POST(request: Request) {
-  const body = await request.json() as {
-    type?: string;
-    payload?: { pathname?: string; callbackUrl?: string };
-  };
+async function getAuth() {
+  const store = await cookies();
+  return (
+    !!process.env.ADMIN_PASSWORD &&
+    store.get("admin_token")?.value === process.env.ADMIN_PASSWORD
+  );
+}
 
-  // ── Phase 1: generate upload token ────────────────────────────────────────
-  if (body.type === "blob.generate-client-token") {
-    const store = await cookies();
-    const isAuthed =
-      !!process.env.ADMIN_PASSWORD &&
-      store.get("admin_token")?.value === process.env.ADMIN_PASSWORD;
+export const maxDuration = 60;
 
-    if (!isAuthed) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
-    }
+export async function POST(request: NextRequest) {
+  if (!(await getAuth())) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const pathname = body.payload?.pathname ?? "upload";
-    // Use the callbackUrl the browser sends so it's encoded in the token —
-    // Vercel Blob validates this field is present before accepting the upload.
-    const callbackUrl =
-      body.payload?.callbackUrl ??
-      `${new URL(request.url).origin}/api/admin/upload`;
+  const action = request.nextUrl.searchParams.get("action");
 
-    const clientToken = await generateClientTokenFromReadWriteToken({
-      pathname,
-      allowedContentTypes: ALLOWED_TYPES,
-      maximumSizeInBytes: 500 * 1024 * 1024, // 500 MB
+  // ── Image upload (or small file) — single put() ───────────────────────────
+  if (!action) {
+    const formData = await request.formData();
+    const file = formData.get("file") as File | null;
+    if (!file) return Response.json({ error: "No file" }, { status: 400 });
+    if (!ALLOWED_TYPES.includes(file.type))
+      return Response.json({ error: "Type not allowed" }, { status: 400 });
+
+    const blob = await put(file.name, file, {
+      access: "public",
       addRandomSuffix: true,
-      validUntil: Date.now() + 10 * 60 * 1000, // 10 min
-      onUploadCompleted: {
-        callbackUrl,
-        tokenPayload: "",
-      },
     });
-
-    return Response.json({ clientToken });
+    return Response.json({ url: blob.url });
   }
 
-  // ── Phase 2: upload complete — called by Vercel Blob servers, no cookie ──
-  if (body.type === "blob.upload-completed") {
-    return Response.json({});
+  // ── Multipart: init ───────────────────────────────────────────────────────
+  if (action === "init") {
+    const { filename, contentType } = await request.json();
+    if (!VIDEO_TYPES.includes(contentType))
+      return Response.json({ error: "Type not allowed" }, { status: 400 });
+
+    const result = await createMultipartUpload(filename, {
+      access: "public",
+      addRandomSuffix: true,
+      contentType,
+    });
+    return Response.json({ key: result.key, uploadId: result.uploadId });
   }
 
-  return Response.json({ error: "Unknown request type" }, { status: 400 });
+  // ── Multipart: upload one chunk ───────────────────────────────────────────
+  if (action === "part") {
+    const key = request.nextUrl.searchParams.get("key")!;
+    const uploadId = request.nextUrl.searchParams.get("uploadId")!;
+    const partNumber = Number(request.nextUrl.searchParams.get("partNumber") ?? "1");
+
+    const buffer = Buffer.from(await request.arrayBuffer());
+    const part = await uploadPart(key, buffer, {
+      access: "public",
+      key,
+      uploadId,
+      partNumber,
+    });
+    return Response.json({ etag: part.etag, partNumber: part.partNumber });
+  }
+
+  // ── Multipart: complete ───────────────────────────────────────────────────
+  if (action === "complete") {
+    const { key, uploadId, parts } = await request.json();
+    const blob = await completeMultipartUpload(key, parts, {
+      access: "public",
+      key,
+      uploadId,
+    });
+    return Response.json({ url: blob.url });
+  }
+
+  return Response.json({ error: "Unknown action" }, { status: 400 });
 }
