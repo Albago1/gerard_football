@@ -615,7 +615,13 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<string>(CATEGORIES[0].id);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [reordering, setReordering] = useState(false);
+
+  // Track changes made via star toggle and reorder arrows.
+  // These are buffered locally and flushed when the user hits "Save changes",
+  // so rapid taps don't race each other in concurrent PUTs to the server.
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
 
   useEffect(() => {
     fetch("/api/clips")
@@ -625,6 +631,17 @@ export default function AdminDashboard() {
       })
       .catch(() => {});
   }, []);
+
+  // Warn before navigating away with unsaved changes
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasUnsavedChanges]);
 
   const isReelTab = activeTab === REEL_TAB;
 
@@ -681,32 +698,21 @@ export default function AdminDashboard() {
     setClips((prev) => prev.filter((c) => c.id !== id));
   }
 
-  async function handleReorder(id: string, dir: "up" | "down") {
+  /** Reorder is local-only; flushed by handleSaveAll. */
+  function handleReorder(id: string, dir: "up" | "down") {
     const reordered = isReelTab
       ? reorderReel(clips, id, dir)
       : reorderClips(clips, id, dir);
     setClips(reordered);
-    setReordering(true);
-    try {
-      await fetch("/api/admin/clips", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(reordered),
-      });
-    } catch {
-      setClips(clips);
-    } finally {
-      setReordering(false);
-    }
+    setHasUnsavedChanges(true);
   }
 
-  /** Toggle a clip's featuredInReel flag and persist. */
-  async function handleToggleFeatured(id: string) {
+  /** Star toggle is local-only; flushed by handleSaveAll. */
+  function handleToggleFeatured(id: string) {
     const target = clips.find((c) => c.id === id);
     if (!target) return;
 
     const nextFeatured = !target.featuredInReel;
-    // When adding to the reel, place at the end (highest reelOrder + 1).
     const maxReelOrder = clips.reduce(
       (m, c) => (c.featuredInReel && (c.reelOrder ?? 0) > m ? c.reelOrder ?? 0 : m),
       -1
@@ -719,16 +725,27 @@ export default function AdminDashboard() {
     };
 
     setClips((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    setHasUnsavedChanges(true);
+  }
 
+  /** Flush all buffered changes (reorder + star toggles) to the server. */
+  async function handleSaveAll() {
+    if (saving) return;
+    setSaving(true);
     try {
-      await fetch(`/api/admin/clips/${id}`, {
+      const res = await fetch("/api/admin/clips", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updated),
+        body: JSON.stringify(clips),
       });
-    } catch {
-      // Revert on failure
-      setClips((prev) => prev.map((c) => (c.id === id ? target : c)));
+      if (!res.ok) throw new Error(await res.text());
+      setHasUnsavedChanges(false);
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 2000);
+    } catch (err) {
+      alert(`Failed to save: ${(err as Error).message}`);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -927,11 +944,9 @@ export default function AdminDashboard() {
       </div>
 
       {/* Footer */}
-      <div className="mt-10 space-y-1 text-zinc-700 text-xs leading-relaxed">
+      <div className="mt-10 mb-32 space-y-1 text-zinc-700 text-xs leading-relaxed">
         <p>
-          {reordering
-            ? "Saving order…"
-            : isReelTab
+          {isReelTab
             ? "Reel plays auto-rotating featured clip every 8 seconds on the homepage."
             : "Clips display newest-first on the public site (highest order = newest)."}
         </p>
@@ -941,6 +956,44 @@ export default function AdminDashboard() {
           </p>
         )}
       </div>
+
+      {/* Floating Save bar — appears when there are buffered reorder/star changes */}
+      {(hasUnsavedChanges || saving || justSaved) && (
+        <div className="fixed bottom-5 inset-x-0 z-50 flex justify-center px-5 pointer-events-none">
+          <div className="pointer-events-auto flex items-center gap-3 bg-black border border-[#2a2a2a] shadow-2xl shadow-black/60 px-4 py-3 sm:px-5">
+            {justSaved && !hasUnsavedChanges ? (
+              <div className="flex items-center gap-2 text-green-400 text-xs font-bold uppercase tracking-widest">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Saved
+              </div>
+            ) : (
+              <>
+                <span className="hidden sm:inline text-zinc-500 text-xs uppercase tracking-widest">
+                  Unsaved changes
+                </span>
+                <span className="sm:hidden w-1.5 h-1.5 rounded-full bg-[#e11d48]" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={handleSaveAll}
+                  disabled={saving}
+                  className="bg-[#e11d48] hover:bg-[#be123c] disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-bold px-5 py-2 uppercase tracking-widest transition-colors flex items-center gap-2"
+                >
+                  {saving ? (
+                    <>
+                      <span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    "Save changes"
+                  )}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
