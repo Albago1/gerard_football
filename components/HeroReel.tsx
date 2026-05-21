@@ -59,67 +59,55 @@ function formatMatchDate(iso: string | undefined, lang: "en" | "de"): string | n
 
 // ── Featured Player ───────────────────────────────────────────────────────────
 
-function FeaturedPlayer({ clip }: { clip: Clip }) {
+type FeaturedProps = {
+  clip: Clip;
+  onEnded: () => void;
+  onProgress: (ratio: number) => void;
+};
+
+function FeaturedPlayer({ clip, onEnded, onProgress }: FeaturedProps) {
   const { lang } = useLang();
-  const [playing, setPlaying] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const videoRef    = useRef<HTMLVideoElement>(null);
+  const [showThumb, setShowThumb] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-  const embed     = resolveEmbed(clip.videoUrl);
-  const thumb     = getAutoThumb(embed, clip);
-  const fresh     = isNewClip(clip);
-  const matchStr  = formatMatchDate(clip.matchDate, lang);
+  const embed    = resolveEmbed(clip.videoUrl);
+  const thumb    = getAutoThumb(embed, clip);
+  const fresh    = isNewClip(clip);
+  const matchStr = formatMatchDate(clip.matchDate, lang);
 
+  // For iframes (YouTube/Vimeo) we can't detect when they actually start
+  // rendering, so we fade the thumbnail away after a short delay.
   useEffect(() => {
-    if (embed.kind === "none") return;
-    const el = containerRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setPlaying(true);
-          obs.disconnect();
-        }
-      },
-      { threshold: 0.6 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
+    if (embed.kind === "youtube" || embed.kind === "vimeo") {
+      const t = setTimeout(() => setShowThumb(false), 700);
+      return () => clearTimeout(t);
+    }
   }, [embed.kind]);
 
-  useEffect(() => {
-    if (playing && embed.kind === "video") {
-      videoRef.current?.play().catch(() => {});
-    }
-  }, [playing, embed.kind]);
-
+  // YouTube / Vimeo embed src — autoplay muted, looped (parent advances on a timer)
   let iframeSrc: string | null = null;
   if (embed.kind === "youtube") {
-    iframeSrc = `https://www.youtube.com/embed/${embed.id}?autoplay=${playing ? 1 : 0}&mute=1&loop=1&playlist=${embed.id}&rel=0&modestbranding=1&controls=1`;
+    iframeSrc = `https://www.youtube.com/embed/${embed.id}?autoplay=1&mute=1&loop=1&playlist=${embed.id}&rel=0&modestbranding=1&controls=1&playsinline=1`;
   } else if (embed.kind === "vimeo") {
-    iframeSrc = `https://player.vimeo.com/video/${embed.id}?autoplay=${playing ? 1 : 0}&muted=1&loop=1&title=0&byline=0&portrait=0`;
+    iframeSrc = `https://player.vimeo.com/video/${embed.id}?autoplay=1&muted=1&loop=1&title=0&byline=0&portrait=0`;
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="relative w-full bg-[#0a0a0a] border border-[#1e1e1e] overflow-hidden"
-      style={{ aspectRatio: "9/16" }}
-    >
-      {/* Thumbnail */}
-      {thumb && !playing && (
+    <div className="relative w-full bg-[#0a0a0a] border border-[#1e1e1e] overflow-hidden" style={{ aspectRatio: "9/16" }}>
+      {/* Thumbnail (covers the video until it starts playing) */}
+      {thumb && showThumb && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={thumb}
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover z-[5]"
         />
       )}
-      {!playing && (
+      {showThumb && (
         <>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent z-[5]" />
+          <div className="absolute inset-0 flex items-center justify-center z-[5]">
             <div className="w-14 h-14 rounded-full border border-white/20 bg-black/30 backdrop-blur-sm flex items-center justify-center">
               <svg className="w-6 h-6 text-white ml-1" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M8 5v14l11-7z" />
@@ -132,21 +120,31 @@ function FeaturedPlayer({ clip }: { clip: Clip }) {
       {iframeSrc && (
         <iframe
           src={iframeSrc}
-          className={`absolute inset-0 w-full h-full border-0 transition-opacity duration-500 ${playing ? "opacity-100" : "opacity-0"}`}
+          className="absolute inset-0 w-full h-full border-0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
           title={clip.title}
         />
       )}
 
+      {/* Native video — autoplay muted, no loop so onEnded fires and we can advance */}
       {embed.kind === "video" && (
         <video
           ref={videoRef}
           src={embed.src}
+          autoPlay
           muted
-          loop
           playsInline
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${playing ? "opacity-100" : "opacity-0"}`}
+          preload="auto"
+          onPlaying={() => setShowThumb(false)}
+          onEnded={onEnded}
+          onTimeUpdate={(e) => {
+            const v = e.currentTarget;
+            if (v.duration > 0 && Number.isFinite(v.duration)) {
+              onProgress(v.currentTime / v.duration);
+            }
+          }}
+          className="absolute inset-0 w-full h-full object-cover"
         />
       )}
 
@@ -231,8 +229,10 @@ function MiniCard({ clip, onClick }: { clip: Clip; onClick: () => void }) {
 
 // ── HeroReel ──────────────────────────────────────────────────────────────────
 
-const ROTATE_MS = 8000;
-const PROGRESS_TICK_MS = 80; // 100 steps over 8 s
+// We can't reliably detect when a YouTube/Vimeo iframe finishes playing without
+// loading their JS APIs, so we use a generous fallback timer for those.
+const IFRAME_FALLBACK_MS = 25_000;
+const TICK_MS = 100;
 
 const FALLBACK_CAT_ORDER = ["goals", "assists", "dribbling", "movement", "pressing", "physical"];
 
@@ -258,7 +258,6 @@ export default function HeroReel() {
             (a, b) => (a.reelOrder ?? 0) - (b.reelOrder ?? 0)
           );
         } else {
-          // No curation yet — show top clips by category order (legacy fallback)
           chosen = [...(data as Clip[])].sort((a, b) => {
             const ai = FALLBACK_CAT_ORDER.indexOf(a.category);
             const bi = FALLBACK_CAT_ORDER.indexOf(b.category);
@@ -275,26 +274,46 @@ export default function HeroReel() {
       .catch(() => {});
   }, []);
 
-  // Auto-rotate the featured clip every 8 s, with a progress bar.
-  // Restarts whenever featured changes (so user clicks reset the timer).
+  const featuredClip = clips[featured];
+  const featuredKind = featuredClip
+    ? resolveEmbed(featuredClip.videoUrl).kind
+    : "none";
+
+  // Reset progress whenever the featured clip changes
+  useEffect(() => {
+    setProgress(0);
+  }, [featured]);
+
+  // For YouTube/Vimeo we don't know when the video ends, so use a fallback timer.
+  // Native videos drive the timer themselves via onEnded / onTimeUpdate.
   useEffect(() => {
     if (clips.length < 2) return;
+    if (featuredKind !== "youtube" && featuredKind !== "vimeo") return;
+
     let step = 0;
-    setProgress(0);
     const id = setInterval(() => {
       step += 1;
-      if (step >= ROTATE_MS / PROGRESS_TICK_MS) {
+      const total = IFRAME_FALLBACK_MS / TICK_MS;
+      if (step >= total) {
         setFeatured((f) => (f + 1) % clips.length);
         step = 0;
       }
-      setProgress((step * PROGRESS_TICK_MS * 100) / ROTATE_MS);
-    }, PROGRESS_TICK_MS);
+      setProgress((step / total) * 100);
+    }, TICK_MS);
     return () => clearInterval(id);
-  }, [featured, clips.length]);
+  }, [featured, clips.length, featuredKind]);
+
+  function handleEnded() {
+    setFeatured((f) => (f + 1) % clips.length);
+  }
+
+  function handleProgress(ratio: number) {
+    setProgress(Math.max(0, Math.min(100, ratio * 100)));
+  }
 
   if (clips.length === 0) return null;
+  if (!featuredClip) return null;
 
-  const featuredClip = clips[featured];
   const rest = clips.filter((_, i) => i !== featured);
 
   return (
@@ -334,14 +353,19 @@ export default function HeroReel() {
         {/* Layout */}
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
 
-          {/* Featured clip — 9:16 with auto-rotate progress bar at bottom */}
+          {/* Featured clip — 9:16, real-time progress bar at bottom */}
           <div className="w-full lg:w-auto lg:flex-shrink-0 relative" style={{ maxWidth: "300px" }}>
-            <FeaturedPlayer key={`${featured}-${featuredClip.id}`} clip={featuredClip} />
+            <FeaturedPlayer
+              key={`${featured}-${featuredClip.id}`}
+              clip={featuredClip}
+              onEnded={handleEnded}
+              onProgress={handleProgress}
+            />
             {clips.length > 1 && (
               <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-black/40 z-20 overflow-hidden">
                 <div
-                  className="h-full bg-[#e11d48]"
-                  style={{ width: `${progress}%`, transition: "width 80ms linear" }}
+                  className="h-full bg-[#e11d48] transition-[width] duration-100 ease-linear"
+                  style={{ width: `${progress}%` }}
                 />
               </div>
             )}

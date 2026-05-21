@@ -18,14 +18,15 @@ function resolveEmbed(
   if (yt)
     return {
       type: "iframe",
-      src: `https://www.youtube.com/embed/${yt[1]}?rel=0&modestbranding=1`,
+      // autoplay + loop (loop on YouTube requires playlist param set to the same video ID)
+      src: `https://www.youtube.com/embed/${yt[1]}?autoplay=1&mute=1&loop=1&playlist=${yt[1]}&rel=0&modestbranding=1&playsinline=1`,
     };
 
   const vimeo = url.match(/vimeo\.com\/(\d+)/);
   if (vimeo)
     return {
       type: "iframe",
-      src: `https://player.vimeo.com/video/${vimeo[1]}?title=0&byline=0&portrait=0`,
+      src: `https://player.vimeo.com/video/${vimeo[1]}?autoplay=1&muted=1&loop=1&title=0&byline=0&portrait=0`,
     };
 
   const drive = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
@@ -66,7 +67,9 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
   const total = category.clips.length;
   const hasPrev = clipIndex > 0;
   const hasNext = clipIndex < total - 1;
+  // Track vertical swipe (Instagram-style) + horizontal as backup
   const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
   const [videoError, setVideoError] = useState(false);
 
   useEffect(() => {
@@ -76,8 +79,9 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft" && hasPrev) onNavigate(clipIndex - 1);
-      if (e.key === "ArrowRight" && hasNext) onNavigate(clipIndex + 1);
+      // Both arrow axes work: up/down (Instagram-style) and left/right (desktop)
+      if ((e.key === "ArrowLeft" || e.key === "ArrowDown") && hasPrev) onNavigate(clipIndex - 1);
+      if ((e.key === "ArrowRight" || e.key === "ArrowUp") && hasNext) onNavigate(clipIndex + 1);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -103,11 +107,20 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
       onClick={onClose}
       onTouchStart={(e) => {
         touchStartX.current = e.touches[0].clientX;
+        touchStartY.current = e.touches[0].clientY;
       }}
       onTouchEnd={(e) => {
-        const diff = touchStartX.current - e.changedTouches[0].clientX;
-        if (diff > 55 && hasNext) onNavigate(clipIndex + 1);
-        if (diff < -55 && hasPrev) onNavigate(clipIndex - 1);
+        const dx = touchStartX.current - e.changedTouches[0].clientX;
+        const dy = touchStartY.current - e.changedTouches[0].clientY;
+        // Use the dominant axis: vertical swipe (Instagram) or horizontal swipe
+        if (Math.abs(dy) > Math.abs(dx)) {
+          // Vertical: swipe up = next, swipe down = previous
+          if (dy > 55 && hasNext) onNavigate(clipIndex + 1);
+          if (dy < -55 && hasPrev) onNavigate(clipIndex - 1);
+        } else {
+          if (dx > 55 && hasNext) onNavigate(clipIndex + 1);
+          if (dx < -55 && hasPrev) onNavigate(clipIndex - 1);
+        }
       }}
     >
       <div
@@ -166,9 +179,15 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
               />
             ) : (
               <video
+                // key forces a fresh element on each clip so autoplay always re-fires
+                key={clip.id}
                 src={embed.src}
+                autoPlay
+                loop
+                muted
                 controls
                 playsInline
+                preload="auto"
                 className="absolute inset-0 w-full h-full object-contain"
                 aria-label={clip.title}
                 onError={() => setVideoError(true)}
