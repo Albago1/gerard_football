@@ -90,9 +90,7 @@ function ClipForm({
 }) {
   const [values, setValues] = useState<FormValues>(defaultValues);
   const [busy, setBusy] = useState(false);
-  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadingThumb, setUploadingThumb] = useState(false);
-  const videoFileRef = useRef<HTMLInputElement>(null);
   const thumbFileRef = useRef<HTMLInputElement>(null);
 
   function set<K extends keyof FormValues>(key: K, val: FormValues[K]) {
@@ -101,67 +99,17 @@ function ClipForm({
 
   async function handleFileUpload(
     file: File,
-    field: "videoUrl" | "thumbnailUrl",
+    field: "thumbnailUrl",
     setUploading: (v: boolean) => void
   ) {
     setUploading(true);
     try {
-      const isVideo = file.type.startsWith("video/");
-
-      if (!isVideo) {
-        // Images are small — simple FormData POST, server calls put() directly
-        const formData = new FormData();
-        formData.append("file", file);
-        const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
-        if (!res.ok) throw new Error((await res.json()).error ?? "Upload failed");
-        const { url } = await res.json();
-        set(field, url);
-        return;
-      }
-
-      // Videos: chunked multipart upload — each chunk goes through our route
-      // (no CORS issues, no browser→Blob direct calls)
-      const CHUNK = 4 * 1024 * 1024; // 4 MB — under Vercel's 4.5 MB body limit
-      const total = Math.ceil(file.size / CHUNK);
-
-      // 1. Init
-      const initRes = await fetch("/api/admin/upload?action=init", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: file.name, contentType: file.type }),
-      });
-      if (!initRes.ok) throw new Error((await initRes.json()).error ?? "Init failed");
-      const { key, uploadId, filename } = await initRes.json();
-
-      // 2. Upload chunks
-      const parts: { etag: string; partNumber: number }[] = [];
-      for (let i = 0; i < total; i++) {
-        const chunk = file.slice(i * CHUNK, (i + 1) * CHUNK);
-        const params = new URLSearchParams({
-          action: "part",
-          key,
-          uploadId,
-          filename,
-          partNumber: String(i + 1),
-        });
-        const partRes = await fetch(`/api/admin/upload?${params}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/octet-stream" },
-          body: chunk,
-        });
-        if (!partRes.ok) throw new Error(`Chunk ${i + 1}/${total} failed`);
-        parts.push(await partRes.json());
-      }
-
-      // 3. Complete
-      const completeRes = await fetch("/api/admin/upload?action=complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key, uploadId, filename, parts }),
-      });
-      if (!completeRes.ok) throw new Error((await completeRes.json()).error ?? "Complete failed");
-      const { url } = await completeRes.json();
-      set(field, url);
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Upload failed");
+      set(field, json.url);
     } catch (err) {
       alert(`Upload failed: ${(err as Error).message}`);
     } finally {
@@ -194,8 +142,6 @@ function ClipForm({
 
   const inputClass =
     "w-full bg-[#111] border border-[#222] text-white px-3 py-2.5 text-sm focus:outline-none focus:border-[#e11d48] transition-colors placeholder:text-zinc-700";
-
-  const isAnyUploading = uploadingVideo || uploadingThumb;
 
   return (
     <form
@@ -252,55 +198,17 @@ function ClipForm({
       {/* Video */}
       <div>
         <label className="block text-zinc-500 text-[10px] uppercase tracking-widest mb-1.5">
-          Video
+          Video URL
         </label>
         <input
           type="text"
           value={values.videoUrl}
           onChange={(e) => set("videoUrl", e.target.value)}
-          placeholder="https://youtu.be/... or paste any video URL"
+          placeholder="https://youtu.be/... or any YouTube / Vimeo / Google Drive link"
           className={inputClass}
         />
-        <div className="flex items-center gap-3 mt-2">
-          <div className="h-px flex-1 bg-[#1e1e1e]" />
-          <span className="text-zinc-700 text-[10px] uppercase tracking-widest shrink-0">
-            or upload file
-          </span>
-          <div className="h-px flex-1 bg-[#1e1e1e]" />
-        </div>
-        <input
-          ref={videoFileRef}
-          type="file"
-          accept="video/mp4,video/quicktime,video/webm"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleFileUpload(file, "videoUrl", setUploadingVideo);
-            e.target.value = "";
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => videoFileRef.current?.click()}
-          disabled={isAnyUploading}
-          className="mt-2 w-full border border-dashed border-[#2a2a2a] hover:border-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-600 hover:text-zinc-300 text-xs uppercase tracking-widest py-2.5 transition-colors flex items-center justify-center gap-2"
-        >
-          {uploadingVideo ? (
-            <>
-              <span className="w-3 h-3 border border-zinc-600 border-t-white rounded-full animate-spin" />
-              Uploading…
-            </>
-          ) : (
-            <>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-              </svg>
-              Upload MP4 / MOV / WEBM
-            </>
-          )}
-        </button>
         <p className="text-zinc-700 text-[10px] mt-1">
-          YouTube, Vimeo, Google Drive, or upload directly (max 500 MB)
+          Paste a YouTube, Vimeo, or Google Drive link. Direct video file upload is not supported.
         </p>
       </div>
 
@@ -340,7 +248,7 @@ function ClipForm({
         <button
           type="button"
           onClick={() => thumbFileRef.current?.click()}
-          disabled={isAnyUploading}
+          disabled={uploadingThumb}
           className="mt-2 w-full border border-dashed border-[#2a2a2a] hover:border-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-600 hover:text-zinc-300 text-xs uppercase tracking-widest py-2.5 transition-colors flex items-center justify-center gap-2"
         >
           {uploadingThumb ? (
@@ -372,7 +280,7 @@ function ClipForm({
       <div className="flex items-center gap-3 pt-1">
         <button
           type="submit"
-          disabled={busy || isAnyUploading}
+          disabled={busy || uploadingThumb}
           className="bg-[#e11d48] hover:bg-[#be123c] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-6 py-2.5 uppercase tracking-widest transition-colors"
         >
           {busy ? "Saving…" : "Save Clip"}
@@ -380,7 +288,7 @@ function ClipForm({
         <button
           type="button"
           onClick={onCancel}
-          disabled={busy || isAnyUploading}
+          disabled={busy || uploadingThumb}
           className="text-zinc-600 hover:text-zinc-400 text-xs uppercase tracking-widest transition-colors"
         >
           Cancel
