@@ -131,7 +131,7 @@ function ClipForm({
         body: JSON.stringify({ filename: file.name, contentType: file.type }),
       });
       if (!initRes.ok) throw new Error((await initRes.json()).error ?? "Init failed");
-      const { key, uploadId } = await initRes.json();
+      const { key, uploadId, filename } = await initRes.json();
 
       // 2. Upload chunks
       const parts: { etag: string; partNumber: number }[] = [];
@@ -141,6 +141,7 @@ function ClipForm({
           action: "part",
           key,
           uploadId,
+          filename,
           partNumber: String(i + 1),
         });
         const partRes = await fetch(`/api/admin/upload?${params}`, {
@@ -156,7 +157,7 @@ function ClipForm({
       const completeRes = await fetch("/api/admin/upload?action=complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key, uploadId, parts }),
+        body: JSON.stringify({ key, uploadId, filename, parts }),
       });
       if (!completeRes.ok) throw new Error((await completeRes.json()).error ?? "Complete failed");
       const { url } = await completeRes.json();
