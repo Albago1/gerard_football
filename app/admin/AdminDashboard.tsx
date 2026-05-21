@@ -23,7 +23,11 @@ import { logout } from "./actions";
 import { CATEGORIES } from "@/lib/categories";
 import type { Clip } from "@/lib/clips-store";
 
-// ── Reorder helper ────────────────────────────────────────────────────────────
+// ── Special tab id for the curated highlight reel ─────────────────────────────
+
+const REEL_TAB = "__reel__";
+
+// ── Reorder helpers ───────────────────────────────────────────────────────────
 
 function reorderClips(clips: Clip[], id: string, dir: "up" | "down"): Clip[] {
   const clip = clips.find((c) => c.id === id);
@@ -45,6 +49,25 @@ function reorderClips(clips: Clip[], id: string, dir: "up" | "down"): Clip[] {
   return clips.map((c) => catClips.find((cc) => cc.id === c.id) ?? c);
 }
 
+/** Reorder featured-in-reel clips only — uses reelOrder, not the category order. */
+function reorderReel(clips: Clip[], id: string, dir: "up" | "down"): Clip[] {
+  const reelClips = clips
+    .filter((c) => c.featuredInReel)
+    .sort((a, b) => (a.reelOrder ?? 0) - (b.reelOrder ?? 0));
+
+  const idx = reelClips.findIndex((c) => c.id === id);
+  if (idx === -1) return clips;
+  const swapIdx = dir === "up" ? idx - 1 : idx + 1;
+  if (swapIdx < 0 || swapIdx >= reelClips.length) return clips;
+
+  [reelClips[idx], reelClips[swapIdx]] = [reelClips[swapIdx], reelClips[idx]];
+  reelClips.forEach((c, i) => {
+    c.reelOrder = i;
+  });
+
+  return clips.map((c) => reelClips.find((rc) => rc.id === c.id) ?? c);
+}
+
 // ── Form types ────────────────────────────────────────────────────────────────
 
 type FormValues = {
@@ -53,6 +76,7 @@ type FormValues = {
   category: string;
   videoUrl: string;
   thumbnailUrl: string;
+  matchDate: string;
 };
 
 function emptyForm(defaultCategory: string): FormValues {
@@ -62,6 +86,7 @@ function emptyForm(defaultCategory: string): FormValues {
     category: defaultCategory,
     videoUrl: "",
     thumbnailUrl: "",
+    matchDate: "",
   };
 }
 
@@ -72,6 +97,7 @@ function clipToForm(clip: Clip): FormValues {
     category: clip.category,
     videoUrl: clip.videoUrl ?? "",
     thumbnailUrl: clip.thumbnailUrl ?? "",
+    matchDate: clip.matchDate ?? "",
   };
 }
 
@@ -186,6 +212,11 @@ function ClipForm({
         order: existingClip?.order ?? 0,
         videoUrl: values.videoUrl.trim() || undefined,
         thumbnailUrl: values.thumbnailUrl.trim() || undefined,
+        matchDate: values.matchDate.trim() || undefined,
+        // Preserve existing reel/created fields on update
+        featuredInReel: existingClip?.featuredInReel,
+        reelOrder: existingClip?.reelOrder,
+        createdAt: existingClip?.createdAt,
       });
     } catch (err) {
       alert(`Error: ${(err as Error).message}`);
@@ -247,6 +278,25 @@ function ClipForm({
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Match date */}
+      <div>
+        <label className="block text-zinc-500 text-[10px] uppercase tracking-widest mb-1.5">
+          Match date{" "}
+          <span className="normal-case font-normal text-zinc-700">
+            (optional)
+          </span>
+        </label>
+        <input
+          type="date"
+          value={values.matchDate}
+          onChange={(e) => set("matchDate", e.target.value)}
+          className={inputClass}
+        />
+        <p className="text-zinc-700 text-[10px] mt-1">
+          Shown under the clip title in the reel — e.g. &ldquo;May 2026&rdquo;.
+        </p>
       </div>
 
       {/* Video */}
@@ -404,17 +454,23 @@ function ClipRow({
   clip,
   isFirst,
   isLast,
+  showCategory,
   onEdit,
   onDelete,
   onMove,
+  onToggleFeatured,
 }: {
   clip: Clip;
   isFirst: boolean;
   isLast: boolean;
+  /** Show the clip's category label in the row (used in the Reel tab where clips are mixed). */
+  showCategory?: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onMove: (dir: "up" | "down") => void;
+  onToggleFeatured: () => void;
 }) {
+  const categoryTitle = CATEGORIES.find((c) => c.id === clip.category)?.title;
   return (
     <div className="flex items-center gap-3 px-4 py-3.5 border border-[#1e1e1e] bg-[#0d0d0d]">
       {/* Order arrows */}
@@ -470,7 +526,12 @@ function ClipRow({
             </span>
           )}
         </p>
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          {showCategory && categoryTitle && (
+            <span className="text-[9px] font-bold px-1.5 py-px uppercase tracking-wide text-zinc-400 bg-[#1e1e1e]">
+              {categoryTitle}
+            </span>
+          )}
           <Badge ok={!!clip.videoUrl} label="video" />
           <Badge ok={!!clip.thumbnailUrl} label="thumb" />
         </div>
@@ -478,6 +539,32 @@ function ClipRow({
 
       {/* Actions */}
       <div className="flex items-center gap-3 shrink-0">
+        {/* Star toggle — adds/removes from the Hero Reel */}
+        <button
+          type="button"
+          onClick={onToggleFeatured}
+          className={`transition-colors ${
+            clip.featuredInReel
+              ? "text-[#e11d48] hover:text-[#be123c]"
+              : "text-zinc-700 hover:text-zinc-400"
+          }`}
+          aria-label={clip.featuredInReel ? "Remove from reel" : "Add to reel"}
+          title={clip.featuredInReel ? "Remove from highlight reel" : "Add to highlight reel"}
+        >
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill={clip.featuredInReel ? "currentColor" : "none"}
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
+        </button>
         <button
           type="button"
           onClick={onEdit}
@@ -539,9 +626,17 @@ export default function AdminDashboard() {
       .catch(() => {});
   }, []);
 
+  const isReelTab = activeTab === REEL_TAB;
+
+  const reelClips = clips
+    .filter((c) => c.featuredInReel)
+    .sort((a, b) => (a.reelOrder ?? 0) - (b.reelOrder ?? 0));
+
   const categoryClips = clips
     .filter((c) => c.category === activeTab)
     .sort((a, b) => a.order - b.order);
+
+  const visibleClips = isReelTab ? reelClips : categoryClips;
 
   async function handleCreate(data: Omit<Clip, "id">) {
     const maxOrder =
@@ -587,7 +682,9 @@ export default function AdminDashboard() {
   }
 
   async function handleReorder(id: string, dir: "up" | "down") {
-    const reordered = reorderClips(clips, id, dir);
+    const reordered = isReelTab
+      ? reorderReel(clips, id, dir)
+      : reorderClips(clips, id, dir);
     setClips(reordered);
     setReordering(true);
     try {
@@ -600,6 +697,38 @@ export default function AdminDashboard() {
       setClips(clips);
     } finally {
       setReordering(false);
+    }
+  }
+
+  /** Toggle a clip's featuredInReel flag and persist. */
+  async function handleToggleFeatured(id: string) {
+    const target = clips.find((c) => c.id === id);
+    if (!target) return;
+
+    const nextFeatured = !target.featuredInReel;
+    // When adding to the reel, place at the end (highest reelOrder + 1).
+    const maxReelOrder = clips.reduce(
+      (m, c) => (c.featuredInReel && (c.reelOrder ?? 0) > m ? c.reelOrder ?? 0 : m),
+      -1
+    );
+
+    const updated: Clip = {
+      ...target,
+      featuredInReel: nextFeatured,
+      reelOrder: nextFeatured ? maxReelOrder + 1 : target.reelOrder,
+    };
+
+    setClips((prev) => prev.map((c) => (c.id === id ? updated : c)));
+
+    try {
+      await fetch(`/api/admin/clips/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+    } catch {
+      // Revert on failure
+      setClips((prev) => prev.map((c) => (c.id === id ? target : c)));
     }
   }
 
@@ -649,8 +778,33 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Category tabs */}
+      {/* Category tabs (+ Hero Reel tab first) */}
       <div className="flex flex-wrap border-b border-[#1e1e1e] mb-6">
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab(REEL_TAB);
+            setEditingId(null);
+            setIsCreating(false);
+          }}
+          className={`px-3 py-2.5 text-xs font-bold uppercase tracking-widest border-b-2 -mb-px transition-colors flex items-center gap-1.5 ${
+            isReelTab
+              ? "border-[#e11d48] text-white"
+              : "border-transparent text-zinc-600 hover:text-zinc-400"
+          }`}
+          title="Curated highlight reel on the homepage"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
+          Reel
+          {reelClips.length > 0 && (
+            <span className="text-[9px] font-bold bg-[#1e1e1e] text-zinc-500 px-1.5 py-0.5 rounded-full">
+              {reelClips.length}
+            </span>
+          )}
+        </button>
+
         {CATEGORIES.map((cat) => {
           const count = clips.filter((c) => c.category === cat.id).length;
           return (
@@ -679,8 +833,19 @@ export default function AdminDashboard() {
         })}
       </div>
 
+      {/* Reel tab intro */}
+      {isReelTab && (
+        <div className="mb-4 px-4 py-3 border border-[#1e1e1e] bg-[#0d0d0d]">
+          <p className="text-zinc-300 text-xs leading-relaxed">
+            <span className="text-[#e11d48] font-bold">★</span> Clips here appear in the homepage <strong className="text-white">highlight reel</strong>.
+            Add clips by tapping the star icon on any clip in the category tabs.
+            Use the arrows here to arrange the order they play in.
+          </p>
+        </div>
+      )}
+
       {/* Create form */}
-      {isCreating && (
+      {isCreating && !isReelTab && (
         <div className="mb-3">
           <p className="text-zinc-500 text-[10px] uppercase tracking-widest font-bold mb-2">
             New Clip
@@ -693,8 +858,8 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Add clip button */}
-      {!isCreating && (
+      {/* Add clip button (hidden on Reel tab) */}
+      {!isCreating && !isReelTab && (
         <button
           type="button"
           onClick={() => {
@@ -721,13 +886,15 @@ export default function AdminDashboard() {
 
       {/* Clip list */}
       <div className="space-y-1.5">
-        {categoryClips.length === 0 && !isCreating && (
+        {visibleClips.length === 0 && !isCreating && (
           <p className="text-zinc-700 text-xs py-6 text-center uppercase tracking-widest">
-            No clips yet — add one above.
+            {isReelTab
+              ? "No clips starred yet — tap the ★ on any clip to add it here."
+              : "No clips yet — add one above."}
           </p>
         )}
 
-        {categoryClips.map((clip, i) =>
+        {visibleClips.map((clip, i) =>
           editingId === clip.id ? (
             <div key={clip.id} className="mb-1">
               <p className="text-zinc-500 text-[10px] uppercase tracking-widest font-bold mb-2">
@@ -745,13 +912,15 @@ export default function AdminDashboard() {
               key={clip.id}
               clip={clip}
               isFirst={i === 0}
-              isLast={i === categoryClips.length - 1}
+              isLast={i === visibleClips.length - 1}
+              showCategory={isReelTab}
               onEdit={() => {
                 setEditingId(clip.id);
                 setIsCreating(false);
               }}
               onDelete={() => handleDelete(clip.id)}
               onMove={(dir) => handleReorder(clip.id, dir)}
+              onToggleFeatured={() => handleToggleFeatured(clip.id)}
             />
           )
         )}
@@ -762,12 +931,15 @@ export default function AdminDashboard() {
         <p>
           {reordering
             ? "Saving order…"
+            : isReelTab
+            ? "Reel plays auto-rotating featured clip every 8 seconds on the homepage."
             : "Clips display newest-first on the public site (highest order = newest)."}
         </p>
-        <p>
-          Paste any YouTube link into the Video URL field — no special format
-          needed.
-        </p>
+        {!isReelTab && (
+          <p>
+            Paste any YouTube link into the Video URL field — no special format needed.
+          </p>
+        )}
       </div>
     </div>
   );

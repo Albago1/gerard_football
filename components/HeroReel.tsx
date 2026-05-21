@@ -23,10 +23,8 @@ function resolveEmbed(url?: string): Embed {
   const vimeo = url.match(/vimeo\.com\/(\d+)/);
   if (vimeo) return { kind: "vimeo", id: vimeo[1] };
 
-  // Google Drive or any other non-video URL → skip
   if (url.includes("drive.google.com")) return { kind: "none" };
 
-  // Direct file URL (Cloudinary, etc.)
   return { kind: "video", src: url };
 }
 
@@ -37,17 +35,41 @@ function getAutoThumb(embed: Embed, clip: Clip): string | null {
   return null;
 }
 
-// ── FeaturedPlayer ────────────────────────────────────────────────────────────
+// ── Date helpers ──────────────────────────────────────────────────────────────
+
+const NEW_BADGE_DAYS = 30;
+
+function isNewClip(clip: Clip): boolean {
+  if (!clip.createdAt) return false;
+  const t = new Date(clip.createdAt).getTime();
+  if (Number.isNaN(t)) return false;
+  const days = (Date.now() - t) / (1000 * 60 * 60 * 24);
+  return days >= 0 && days < NEW_BADGE_DAYS;
+}
+
+function formatMatchDate(iso: string | undefined, lang: "en" | "de"): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString(lang === "de" ? "de-DE" : "en-US", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+// ── Featured Player ───────────────────────────────────────────────────────────
 
 function FeaturedPlayer({ clip }: { clip: Clip }) {
+  const { lang } = useLang();
   const [playing, setPlaying] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef    = useRef<HTMLVideoElement>(null);
 
-  const embed = resolveEmbed(clip.videoUrl);
-  const thumb = getAutoThumb(embed, clip);
+  const embed     = resolveEmbed(clip.videoUrl);
+  const thumb     = getAutoThumb(embed, clip);
+  const fresh     = isNewClip(clip);
+  const matchStr  = formatMatchDate(clip.matchDate, lang);
 
-  // Start playing when 60 % of the card is visible
   useEffect(() => {
     if (embed.kind === "none") return;
     const el = containerRef.current;
@@ -65,14 +87,12 @@ function FeaturedPlayer({ clip }: { clip: Clip }) {
     return () => obs.disconnect();
   }, [embed.kind]);
 
-  // For native <video>, imperatively play once the state flips
   useEffect(() => {
     if (playing && embed.kind === "video") {
       videoRef.current?.play().catch(() => {});
     }
   }, [playing, embed.kind]);
 
-  // Build iframe src for YouTube / Vimeo
   let iframeSrc: string | null = null;
   if (embed.kind === "youtube") {
     iframeSrc = `https://www.youtube.com/embed/${embed.id}?autoplay=${playing ? 1 : 0}&mute=1&loop=1&playlist=${embed.id}&rel=0&modestbranding=1&controls=1`;
@@ -86,7 +106,7 @@ function FeaturedPlayer({ clip }: { clip: Clip }) {
       className="relative w-full bg-[#0a0a0a] border border-[#1e1e1e] overflow-hidden"
       style={{ aspectRatio: "9/16" }}
     >
-      {/* Thumbnail shown until autoplay fires */}
+      {/* Thumbnail */}
       {thumb && !playing && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -96,8 +116,6 @@ function FeaturedPlayer({ clip }: { clip: Clip }) {
           className="absolute inset-0 w-full h-full object-cover"
         />
       )}
-
-      {/* Gradient + play hint on thumbnail */}
       {!playing && (
         <>
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
@@ -111,7 +129,6 @@ function FeaturedPlayer({ clip }: { clip: Clip }) {
         </>
       )}
 
-      {/* YouTube / Vimeo iframe */}
       {iframeSrc && (
         <iframe
           src={iframeSrc}
@@ -122,7 +139,6 @@ function FeaturedPlayer({ clip }: { clip: Clip }) {
         />
       )}
 
-      {/* Native video (Cloudinary / direct URL) */}
       {embed.kind === "video" && (
         <video
           ref={videoRef}
@@ -134,14 +150,33 @@ function FeaturedPlayer({ clip }: { clip: Clip }) {
         />
       )}
 
-      {/* Title bar */}
+      {/* NEW badge */}
+      {fresh && (
+        <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 px-2 py-1 bg-[#e11d48] text-white text-[9px] font-bold uppercase tracking-widest">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-75 animate-ping" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+          </span>
+          New
+        </div>
+      )}
+
+      {/* Title + match date */}
       <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent z-10">
         <p className="font-heading font-bold text-white uppercase text-base sm:text-lg leading-tight tracking-wide">
           {clip.title}
         </p>
-        {clip.description && (
+        {(clip.description || matchStr) && (
           <p className="text-zinc-400 text-xs mt-1 leading-relaxed line-clamp-2">
             {clip.description}
+            {clip.description && matchStr && (
+              <span className="text-zinc-600"> · </span>
+            )}
+            {matchStr && (
+              <span className="text-[#e11d48] font-semibold uppercase tracking-wider">
+                {matchStr}
+              </span>
+            )}
           </p>
         )}
       </div>
@@ -149,11 +184,12 @@ function FeaturedPlayer({ clip }: { clip: Clip }) {
   );
 }
 
-// ── MiniCard ──────────────────────────────────────────────────────────────────
+// ── Mini Card ─────────────────────────────────────────────────────────────────
 
 function MiniCard({ clip, onClick }: { clip: Clip; onClick: () => void }) {
   const embed = resolveEmbed(clip.videoUrl);
   const thumb = getAutoThumb(embed, clip);
+  const fresh = isNewClip(clip);
 
   return (
     <button
@@ -170,6 +206,13 @@ function MiniCard({ clip, onClick }: { clip: Clip; onClick: () => void }) {
         <div className="absolute inset-0 bg-[#111]" />
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+      {fresh && (
+        <div className="absolute top-1.5 left-1.5 px-1 py-0.5 bg-[#e11d48] text-white text-[7px] font-bold uppercase tracking-widest">
+          New
+        </div>
+      )}
+
       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
         <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center">
           <svg className="w-3 h-3 text-white ml-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -188,34 +231,66 @@ function MiniCard({ clip, onClick }: { clip: Clip; onClick: () => void }) {
 
 // ── HeroReel ──────────────────────────────────────────────────────────────────
 
+const ROTATE_MS = 8000;
+const PROGRESS_TICK_MS = 80; // 100 steps over 8 s
+
+const FALLBACK_CAT_ORDER = ["goals", "assists", "dribbling", "movement", "pressing", "physical"];
+
 export default function HeroReel() {
   const { t } = useLang();
   const r = t.heroReel;
   const [clips, setClips] = useState<Clip[]>([]);
   const [featured, setFeatured] = useState(0);
+  const [progress, setProgress] = useState(0);
 
+  // Load clips: prefer curated reel, fall back to top 6 by category order
   useEffect(() => {
     fetch("/api/clips")
       .then((res) => res.json())
       .then((data: unknown) => {
-        if (Array.isArray(data) && data.length > 0) {
-          const catOrder = ["goals", "assists", "dribbling", "movement", "pressing", "physical"];
-          const sorted = [...data].sort((a, b) => {
-            const ai = catOrder.indexOf(a.category);
-            const bi = catOrder.indexOf(b.category);
+        if (!Array.isArray(data) || data.length === 0) return;
+
+        const featuredList = (data as Clip[]).filter((c) => c.featuredInReel);
+
+        let chosen: Clip[];
+        if (featuredList.length > 0) {
+          chosen = [...featuredList].sort(
+            (a, b) => (a.reelOrder ?? 0) - (b.reelOrder ?? 0)
+          );
+        } else {
+          // No curation yet — show top clips by category order (legacy fallback)
+          chosen = [...(data as Clip[])].sort((a, b) => {
+            const ai = FALLBACK_CAT_ORDER.indexOf(a.category);
+            const bi = FALLBACK_CAT_ORDER.indexOf(b.category);
             if (ai !== bi) return ai - bi;
             return a.order - b.order;
           });
-          // Only show clips that have a playable video
-          const playable = sorted.filter((c) => {
-            const e = resolveEmbed(c.videoUrl);
-            return e.kind !== "none";
-          });
-          setClips(playable.slice(0, 6));
         }
+
+        const playable = chosen.filter(
+          (c) => resolveEmbed(c.videoUrl).kind !== "none"
+        );
+        setClips(playable.slice(0, 6));
       })
       .catch(() => {});
   }, []);
+
+  // Auto-rotate the featured clip every 8 s, with a progress bar.
+  // Restarts whenever featured changes (so user clicks reset the timer).
+  useEffect(() => {
+    if (clips.length < 2) return;
+    let step = 0;
+    setProgress(0);
+    const id = setInterval(() => {
+      step += 1;
+      if (step >= ROTATE_MS / PROGRESS_TICK_MS) {
+        setFeatured((f) => (f + 1) % clips.length);
+        step = 0;
+      }
+      setProgress((step * PROGRESS_TICK_MS * 100) / ROTATE_MS);
+    }, PROGRESS_TICK_MS);
+    return () => clearInterval(id);
+  }, [featured, clips.length]);
 
   if (clips.length === 0) return null;
 
@@ -259,14 +334,21 @@ export default function HeroReel() {
         {/* Layout */}
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
 
-          {/* Featured clip — 9:16 */}
-          <div className="w-full lg:w-auto lg:flex-shrink-0" style={{ maxWidth: "300px" }}>
+          {/* Featured clip — 9:16 with auto-rotate progress bar at bottom */}
+          <div className="w-full lg:w-auto lg:flex-shrink-0 relative" style={{ maxWidth: "300px" }}>
             <FeaturedPlayer key={`${featured}-${featuredClip.id}`} clip={featuredClip} />
+            {clips.length > 1 && (
+              <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-black/40 z-20 overflow-hidden">
+                <div
+                  className="h-full bg-[#e11d48]"
+                  style={{ width: `${progress}%`, transition: "width 80ms linear" }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Other clips */}
           <div className="w-full">
-            {/* Mobile: horizontal scroll */}
             <div className="flex lg:hidden gap-3 overflow-x-auto pb-2 scrollbar-hide">
               {rest.map((clip) => (
                 <MiniCard
@@ -277,7 +359,6 @@ export default function HeroReel() {
               ))}
             </div>
 
-            {/* Desktop: grid */}
             <div className="hidden lg:grid grid-cols-2 xl:grid-cols-3 gap-3">
               {rest.map((clip) => (
                 <MiniCard
@@ -288,7 +369,6 @@ export default function HeroReel() {
               ))}
             </div>
 
-            {/* Browse CTA — mobile only */}
             <a
               href="#videos"
               className="sm:hidden mt-5 flex items-center gap-2 text-zinc-500 hover:text-white text-xs font-semibold uppercase tracking-[0.15em] transition-colors duration-200"

@@ -11,7 +11,11 @@ export async function POST(request: Request) {
   const clips = await getClips();
 
   const id = `clip-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-  const newClip: Clip = { id, ...body };
+  const newClip: Clip = {
+    id,
+    ...body,
+    createdAt: body.createdAt ?? new Date().toISOString(),
+  };
 
   await saveClips([...clips, newClip]);
   return Response.json(newClip, { status: 201 });

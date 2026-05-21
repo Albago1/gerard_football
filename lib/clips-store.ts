@@ -10,6 +10,14 @@ export type Clip = {
   order: number;
   videoUrl?: string;
   thumbnailUrl?: string;
+  /** If true, this clip appears in the Hero Reel on the homepage. */
+  featuredInReel?: boolean;
+  /** Position within the Hero Reel (lower = earlier). Ignored if not featured. */
+  reelOrder?: number;
+  /** ISO date string (YYYY-MM-DD) — when the match was played. Displayed under the title. */
+  matchDate?: string;
+  /** ISO timestamp set when the clip is first created. Used for the "NEW" badge. */
+  createdAt?: string;
 };
 
 const BLOB_PATH = "data/clips.json";
