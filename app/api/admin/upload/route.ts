@@ -7,9 +7,17 @@ import {
 import { cookies } from "next/headers";
 import { type NextRequest } from "next/server";
 
+// The blob store is configured as private-only, so every upload must use
+// access: "private". Videos and images are served through /api/media-proxy,
+// which authenticates server-side and forwards range requests for mobile.
+
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
 const ALLOWED_TYPES = [...IMAGE_TYPES, ...VIDEO_TYPES];
+
+function proxyUrl(blobUrl: string) {
+  return `/api/media-proxy?url=${encodeURIComponent(blobUrl)}`;
+}
 
 async function isAuthed() {
   const store = await cookies();
@@ -28,7 +36,7 @@ export async function POST(request: NextRequest) {
 
   const action = request.nextUrl.searchParams.get("action");
 
-  // ── Image upload — simple single put() ───────────────────────────────────
+  // ── Small file (images, tiny videos) — single put() ──────────────────────
   if (!action) {
     try {
       const formData = await request.formData();
@@ -38,10 +46,10 @@ export async function POST(request: NextRequest) {
         return Response.json({ error: "Type not allowed" }, { status: 400 });
 
       const blob = await put(file.name, file, {
-        access: "public",
+        access: "private",
         addRandomSuffix: true,
       });
-      return Response.json({ url: blob.url });
+      return Response.json({ url: proxyUrl(blob.url) });
     } catch (err) {
       return Response.json({ error: (err as Error).message }, { status: 500 });
     }
@@ -55,11 +63,10 @@ export async function POST(request: NextRequest) {
         return Response.json({ error: "Type not allowed" }, { status: 400 });
 
       const result = await createMultipartUpload(filename, {
-        access: "public",
+        access: "private",
         addRandomSuffix: true,
         contentType,
       });
-      // Return filename too so part/complete handlers can use the right pathname
       return Response.json({
         key: result.key,
         uploadId: result.uploadId,
@@ -80,7 +87,7 @@ export async function POST(request: NextRequest) {
 
       const buffer = Buffer.from(await request.arrayBuffer());
       const part = await uploadPart(filename, buffer, {
-        access: "public",
+        access: "private",
         key,
         uploadId,
         partNumber,
@@ -96,11 +103,11 @@ export async function POST(request: NextRequest) {
     try {
       const { key, uploadId, filename, parts } = await request.json();
       const blob = await completeMultipartUpload(filename, parts, {
-        access: "public",
+        access: "private",
         key,
         uploadId,
       });
-      return Response.json({ url: blob.url });
+      return Response.json({ url: proxyUrl(blob.url) });
     } catch (err) {
       return Response.json({ error: (err as Error).message }, { status: 500 });
     }
