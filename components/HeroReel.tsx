@@ -4,24 +4,52 @@ import { useState, useEffect, useRef } from "react";
 import { useLang } from "@/lib/i18n";
 import type { Clip } from "@/lib/clips-store";
 
-function ytId(url: string) {
-  const m = url.match(
+// ── URL resolver ──────────────────────────────────────────────────────────────
+
+type Embed =
+  | { kind: "youtube"; id: string }
+  | { kind: "vimeo";   id: string }
+  | { kind: "video";   src: string }
+  | { kind: "none" };
+
+function resolveEmbed(url?: string): Embed {
+  if (!url) return { kind: "none" };
+
+  const yt = url.match(
     /(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([^&\s?/]+)/
   );
-  return m?.[1] ?? null;
+  if (yt) return { kind: "youtube", id: yt[1] };
+
+  const vimeo = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeo) return { kind: "vimeo", id: vimeo[1] };
+
+  // Google Drive or any other non-video URL → skip
+  if (url.includes("drive.google.com")) return { kind: "none" };
+
+  // Direct file URL (Cloudinary, etc.)
+  return { kind: "video", src: url };
 }
+
+function getAutoThumb(embed: Embed, clip: Clip): string | null {
+  if (clip.thumbnailUrl) return clip.thumbnailUrl;
+  if (embed.kind === "youtube")
+    return `https://img.youtube.com/vi/${embed.id}/hqdefault.jpg`;
+  return null;
+}
+
+// ── FeaturedPlayer ────────────────────────────────────────────────────────────
 
 function FeaturedPlayer({ clip }: { clip: Clip }) {
   const [playing, setPlaying] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const id = clip.videoUrl ? ytId(clip.videoUrl) : null;
-  const thumb =
-    clip.thumbnailUrl ??
-    (id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null);
+  const videoRef    = useRef<HTMLVideoElement>(null);
 
-  // Autoplay when 60 % of the card scrolls into view
+  const embed = resolveEmbed(clip.videoUrl);
+  const thumb = getAutoThumb(embed, clip);
+
+  // Start playing when 60 % of the card is visible
   useEffect(() => {
-    if (!id) return;
+    if (embed.kind === "none") return;
     const el = containerRef.current;
     if (!el) return;
     const obs = new IntersectionObserver(
@@ -35,11 +63,22 @@ function FeaturedPlayer({ clip }: { clip: Clip }) {
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [id]);
+  }, [embed.kind]);
 
-  const src = id
-    ? `https://www.youtube.com/embed/${id}?autoplay=${playing ? 1 : 0}&mute=1&loop=1&playlist=${id}&rel=0&modestbranding=1&controls=1`
-    : null;
+  // For native <video>, imperatively play once the state flips
+  useEffect(() => {
+    if (playing && embed.kind === "video") {
+      videoRef.current?.play().catch(() => {});
+    }
+  }, [playing, embed.kind]);
+
+  // Build iframe src for YouTube / Vimeo
+  let iframeSrc: string | null = null;
+  if (embed.kind === "youtube") {
+    iframeSrc = `https://www.youtube.com/embed/${embed.id}?autoplay=${playing ? 1 : 0}&mute=1&loop=1&playlist=${embed.id}&rel=0&modestbranding=1&controls=1`;
+  } else if (embed.kind === "vimeo") {
+    iframeSrc = `https://player.vimeo.com/video/${embed.id}?autoplay=${playing ? 1 : 0}&muted=1&loop=1&title=0&byline=0&portrait=0`;
+  }
 
   return (
     <div
@@ -58,26 +97,24 @@ function FeaturedPlayer({ clip }: { clip: Clip }) {
         />
       )}
 
-      {/* Gradient overlay on thumbnail */}
+      {/* Gradient + play hint on thumbnail */}
       {!playing && (
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-      )}
-
-      {/* Play hint */}
-      {!playing && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-14 h-14 rounded-full border border-white/20 bg-black/30 backdrop-blur-sm flex items-center justify-center">
-            <svg className="w-6 h-6 text-white ml-1" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M8 5v14l11-7z" />
-            </svg>
+        <>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-14 h-14 rounded-full border border-white/20 bg-black/30 backdrop-blur-sm flex items-center justify-center">
+              <svg className="w-6 h-6 text-white ml-1" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
-      {/* YouTube iframe — rendered from the start so it loads early; visible once playing */}
-      {src && (
+      {/* YouTube / Vimeo iframe */}
+      {iframeSrc && (
         <iframe
-          src={src}
+          src={iframeSrc}
           className={`absolute inset-0 w-full h-full border-0 transition-opacity duration-500 ${playing ? "opacity-100" : "opacity-0"}`}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
@@ -85,7 +122,19 @@ function FeaturedPlayer({ clip }: { clip: Clip }) {
         />
       )}
 
-      {/* Title bar at bottom */}
+      {/* Native video (Cloudinary / direct URL) */}
+      {embed.kind === "video" && (
+        <video
+          ref={videoRef}
+          src={embed.src}
+          muted
+          loop
+          playsInline
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${playing ? "opacity-100" : "opacity-0"}`}
+        />
+      )}
+
+      {/* Title bar */}
       <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent z-10">
         <p className="font-heading font-bold text-white uppercase text-base sm:text-lg leading-tight tracking-wide">
           {clip.title}
@@ -100,11 +149,11 @@ function FeaturedPlayer({ clip }: { clip: Clip }) {
   );
 }
 
+// ── MiniCard ──────────────────────────────────────────────────────────────────
+
 function MiniCard({ clip, onClick }: { clip: Clip; onClick: () => void }) {
-  const id = clip.videoUrl ? ytId(clip.videoUrl) : null;
-  const thumb =
-    clip.thumbnailUrl ??
-    (id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null);
+  const embed = resolveEmbed(clip.videoUrl);
+  const thumb = getAutoThumb(embed, clip);
 
   return (
     <button
@@ -123,7 +172,9 @@ function MiniCard({ clip, onClick }: { clip: Clip; onClick: () => void }) {
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
         <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center">
-          <svg className="w-3 h-3 text-white ml-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+          <svg className="w-3 h-3 text-white ml-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M8 5v14l11-7z" />
+          </svg>
         </div>
       </div>
       <div className="absolute bottom-0 left-0 right-0 p-2">
@@ -134,6 +185,8 @@ function MiniCard({ clip, onClick }: { clip: Clip; onClick: () => void }) {
     </button>
   );
 }
+
+// ── HeroReel ──────────────────────────────────────────────────────────────────
 
 export default function HeroReel() {
   const { t } = useLang();
@@ -146,15 +199,19 @@ export default function HeroReel() {
       .then((res) => res.json())
       .then((data: unknown) => {
         if (Array.isArray(data) && data.length > 0) {
-          // Sort by category order, then by clip order — goals first
+          const catOrder = ["goals", "assists", "dribbling", "movement", "pressing", "physical"];
           const sorted = [...data].sort((a, b) => {
-            const catOrder = ["goals", "assists", "dribbling", "movement", "pressing", "physical"];
             const ai = catOrder.indexOf(a.category);
             const bi = catOrder.indexOf(b.category);
             if (ai !== bi) return ai - bi;
             return a.order - b.order;
           });
-          setClips(sorted.slice(0, 6));
+          // Only show clips that have a playable video
+          const playable = sorted.filter((c) => {
+            const e = resolveEmbed(c.videoUrl);
+            return e.kind !== "none";
+          });
+          setClips(playable.slice(0, 6));
         }
       })
       .catch(() => {});
@@ -199,19 +256,19 @@ export default function HeroReel() {
           </a>
         </div>
 
-        {/* Layout: featured clip + sidebar on desktop, stacked on mobile */}
+        {/* Layout */}
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
 
           {/* Featured clip — 9:16 */}
           <div className="w-full lg:w-auto lg:flex-shrink-0" style={{ maxWidth: "300px" }}>
-            <FeaturedPlayer key={featured} clip={featuredClip} />
+            <FeaturedPlayer key={`${featured}-${featuredClip.id}`} clip={featuredClip} />
           </div>
 
-          {/* Rest of clips — vertical on desktop, horizontal scroll on mobile */}
+          {/* Other clips */}
           <div className="w-full">
             {/* Mobile: horizontal scroll */}
             <div className="flex lg:hidden gap-3 overflow-x-auto pb-2 scrollbar-hide">
-              {rest.map((clip, i) => (
+              {rest.map((clip) => (
                 <MiniCard
                   key={clip.id}
                   clip={clip}
