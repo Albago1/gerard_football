@@ -90,13 +90,67 @@ function ClipForm({
 }) {
   const [values, setValues] = useState<FormValues>(defaultValues);
   const [busy, setBusy] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
   const [uploadingThumb, setUploadingThumb] = useState(false);
+  const videoFileRef = useRef<HTMLInputElement>(null);
   const thumbFileRef = useRef<HTMLInputElement>(null);
 
   function set<K extends keyof FormValues>(key: K, val: FormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: val }));
   }
 
+  /** Upload a video directly to Cloudinary from the browser. */
+  async function handleVideoUpload(file: File) {
+    setUploadingVideo(true);
+    setVideoProgress(0);
+    try {
+      // 1. Get a signed token from our server (auth check happens here)
+      const tokenRes = await fetch("/api/admin/cloudinary-token", { method: "POST" });
+      const tokenJson = await tokenRes.json();
+      if (!tokenRes.ok) throw new Error(tokenJson.error ?? "Could not get upload token");
+      const { signature, timestamp, cloudName, apiKey } = tokenJson;
+
+      // 2. Upload directly to Cloudinary (supports CORS, no size limit)
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("api_key", apiKey);
+      formData.append("timestamp", String(timestamp));
+      formData.append("signature", signature);
+
+      const url = await new Promise<string>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`);
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) setVideoProgress(Math.round((e.loaded / e.total) * 100));
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            const data = JSON.parse(xhr.responseText);
+            resolve(data.secure_url as string);
+          } else {
+            try {
+              const err = JSON.parse(xhr.responseText);
+              reject(new Error(err?.error?.message ?? `Upload failed (${xhr.status})`));
+            } catch {
+              reject(new Error(`Upload failed (${xhr.status})`));
+            }
+          }
+        };
+        xhr.onerror = () => reject(new Error("Network error during upload"));
+        xhr.send(formData);
+      });
+
+      set("videoUrl", url);
+    } catch (err) {
+      alert(`Video upload failed: ${(err as Error).message}`);
+    } finally {
+      setUploadingVideo(false);
+      setVideoProgress(0);
+    }
+  }
+
+  /** Upload a thumbnail image via our server (small file, stays on Vercel Blob). */
   async function handleFileUpload(
     file: File,
     field: "thumbnailUrl",
@@ -198,17 +252,63 @@ function ClipForm({
       {/* Video */}
       <div>
         <label className="block text-zinc-500 text-[10px] uppercase tracking-widest mb-1.5">
-          Video URL
+          Video
         </label>
         <input
           type="text"
           value={values.videoUrl}
           onChange={(e) => set("videoUrl", e.target.value)}
-          placeholder="https://youtu.be/... or any YouTube / Vimeo / Google Drive link"
+          placeholder="https://youtu.be/... or paste any video URL"
           className={inputClass}
         />
+        <div className="flex items-center gap-3 mt-2">
+          <div className="h-px flex-1 bg-[#1e1e1e]" />
+          <span className="text-zinc-700 text-[10px] uppercase tracking-widest shrink-0">
+            or upload file
+          </span>
+          <div className="h-px flex-1 bg-[#1e1e1e]" />
+        </div>
+        <input
+          ref={videoFileRef}
+          type="file"
+          accept="video/mp4,video/quicktime,video/webm"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleVideoUpload(file);
+            e.target.value = "";
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => videoFileRef.current?.click()}
+          disabled={uploadingVideo || uploadingThumb}
+          className="mt-2 w-full border border-dashed border-[#2a2a2a] hover:border-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-600 hover:text-zinc-300 text-xs uppercase tracking-widest py-2.5 transition-colors flex items-center justify-center gap-2"
+        >
+          {uploadingVideo ? (
+            <>
+              <span className="w-3 h-3 border border-zinc-600 border-t-white rounded-full animate-spin" />
+              {videoProgress > 0 ? `Uploading… ${videoProgress}%` : "Preparing…"}
+            </>
+          ) : (
+            <>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+              </svg>
+              Upload MP4 / MOV / WEBM
+            </>
+          )}
+        </button>
+        {uploadingVideo && videoProgress > 0 && (
+          <div className="mt-1.5 h-0.5 bg-[#1e1e1e] w-full overflow-hidden">
+            <div
+              className="h-full bg-[#e11d48] transition-all duration-300"
+              style={{ width: `${videoProgress}%` }}
+            />
+          </div>
+        )}
         <p className="text-zinc-700 text-[10px] mt-1">
-          Paste a YouTube, Vimeo, or Google Drive link. Direct video file upload is not supported.
+          YouTube, Vimeo, Google Drive, or upload directly via Cloudinary
         </p>
       </div>
 
@@ -280,7 +380,7 @@ function ClipForm({
       <div className="flex items-center gap-3 pt-1">
         <button
           type="submit"
-          disabled={busy || uploadingThumb}
+          disabled={busy || uploadingVideo || uploadingThumb}
           className="bg-[#e11d48] hover:bg-[#be123c] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-6 py-2.5 uppercase tracking-widest transition-colors"
         >
           {busy ? "Saving…" : "Save Clip"}
@@ -288,7 +388,7 @@ function ClipForm({
         <button
           type="button"
           onClick={onCancel}
-          disabled={busy || uploadingThumb}
+          disabled={busy || uploadingVideo || uploadingThumb}
           className="text-zinc-600 hover:text-zinc-400 text-xs uppercase tracking-widest transition-colors"
         >
           Cancel
