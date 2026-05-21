@@ -19,7 +19,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { upload } from "@vercel/blob/client";
+import { put } from "@vercel/blob/client";
 import { logout } from "./actions";
 import { CATEGORIES } from "@/lib/categories";
 import type { Clip } from "@/lib/clips-store";
@@ -107,11 +107,24 @@ function ClipForm({
   ) {
     setUploading(true);
     try {
-      // Direct client-side upload: browser → Vercel Blob (no function body limit)
-      const blob = await upload(file.name, file, {
-        access: "public",
-        handleUploadUrl: "/api/admin/upload",
+      // Step 1: get a short-lived upload token from our server (tiny JSON request)
+      const tokenRes = await fetch("/api/admin/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name }),
       });
+      if (!tokenRes.ok) {
+        const data = await tokenRes.json();
+        throw new Error(data.error ?? "Failed to get upload token");
+      }
+      const { clientToken } = await tokenRes.json();
+
+      // Step 2: browser PUTs the file straight to Vercel Blob — no size limit
+      const blob = await put(file.name, file, {
+        access: "public",
+        token: clientToken,
+      });
+
       set(field, blob.url);
     } catch (err) {
       alert(`Upload failed: ${(err as Error).message}`);
