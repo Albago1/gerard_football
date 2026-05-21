@@ -12,6 +12,18 @@ type Embed =
   | { kind: "video";   src: string }
   | { kind: "none" };
 
+/**
+ * Insert Cloudinary's automatic quality + format transformations into the URL.
+ * `q_auto` picks a smart bitrate (typically 30-50% smaller than the original)
+ * and `f_auto` serves WebM/AV1 to browsers that support it. Safe no-op for
+ * non-Cloudinary URLs.
+ */
+function optimizeCloudinary(url: string): string {
+  if (!url.includes("res.cloudinary.com")) return url;
+  if (url.includes("/q_auto")) return url; // already optimized
+  return url.replace("/upload/", "/upload/q_auto,f_auto/");
+}
+
 function resolveEmbed(url?: string): Embed {
   if (!url) return { kind: "none" };
 
@@ -25,11 +37,11 @@ function resolveEmbed(url?: string): Embed {
 
   if (url.includes("drive.google.com")) return { kind: "none" };
 
-  return { kind: "video", src: url };
+  return { kind: "video", src: optimizeCloudinary(url) };
 }
 
 function getAutoThumb(embed: Embed, clip: Clip): string | null {
-  if (clip.thumbnailUrl) return clip.thumbnailUrl;
+  if (clip.thumbnailUrl) return optimizeCloudinary(clip.thumbnailUrl);
   if (embed.kind === "youtube")
     return `https://img.youtube.com/vi/${embed.id}/hqdefault.jpg`;
   return null;
@@ -61,11 +73,12 @@ function formatMatchDate(iso: string | undefined, lang: "en" | "de"): string | n
 
 type FeaturedProps = {
   clip: Clip;
+  inView: boolean;
   onEnded: () => void;
   onProgress: (ratio: number) => void;
 };
 
-function FeaturedPlayer({ clip, onEnded, onProgress }: FeaturedProps) {
+function FeaturedPlayer({ clip, inView, onEnded, onProgress }: FeaturedProps) {
   const { lang } = useLang();
   const [showThumb, setShowThumb] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -95,10 +108,22 @@ function FeaturedPlayer({ clip, onEnded, onProgress }: FeaturedProps) {
     v.defaultMuted = true;
     const tryPlay = () => v.play().catch(() => {});
     tryPlay();
-    // Retry shortly after — by then any metadata load is usually done.
     const t = setTimeout(tryPlay, 250);
     return () => clearTimeout(t);
   }, [embed.kind, clip.videoUrl]);
+
+  // Pause/resume native video when reel scrolls in or out of view —
+  // saves Cloudinary bandwidth when nobody's watching.
+  useEffect(() => {
+    if (embed.kind !== "video") return;
+    const v = videoRef.current;
+    if (!v) return;
+    if (inView) {
+      v.play().catch(() => {});
+    } else {
+      v.pause();
+    }
+  }, [inView, embed.kind]);
 
   // YouTube / Vimeo embed src — autoplay muted, looped (parent advances on a timer)
   let iframeSrc: string | null = null;
@@ -258,6 +283,20 @@ export default function HeroReel() {
   const [clips, setClips] = useState<Clip[]>([]);
   const [featured, setFeatured] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [inView, setInView] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  // Track whether the reel is visible — pause playback + rotation when offscreen.
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { threshold: 0.25 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   // Load clips: prefer curated reel, fall back to top 6 by category order
   useEffect(() => {
@@ -302,8 +341,10 @@ export default function HeroReel() {
 
   // For YouTube/Vimeo we don't know when the video ends, so use a fallback timer.
   // Native videos drive the timer themselves via onEnded / onTimeUpdate.
+  // Skip the timer entirely when offscreen — no need to advance clips no one is watching.
   useEffect(() => {
     if (clips.length < 2) return;
+    if (!inView) return;
     if (featuredKind !== "youtube" && featuredKind !== "vimeo") return;
 
     let step = 0;
@@ -317,7 +358,7 @@ export default function HeroReel() {
       setProgress((step / total) * 100);
     }, TICK_MS);
     return () => clearInterval(id);
-  }, [featured, clips.length, featuredKind]);
+  }, [featured, clips.length, featuredKind, inView]);
 
   function handleEnded() {
     setFeatured((f) => (f + 1) % clips.length);
@@ -334,6 +375,7 @@ export default function HeroReel() {
 
   return (
     <section
+      ref={sectionRef}
       className="bg-[#060606] py-16 sm:py-24 border-t border-[#111]"
       aria-labelledby="heroreel-heading"
     >
@@ -376,6 +418,7 @@ export default function HeroReel() {
             <FeaturedPlayer
               key={`${featured}-${featuredClip.id}`}
               clip={featuredClip}
+              inView={inView}
               onEnded={handleEnded}
               onProgress={handleProgress}
             />

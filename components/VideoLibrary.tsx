@@ -9,6 +9,13 @@ import type { Clip } from "@/lib/clips-store";
 // Accepts any URL and returns the right player type.
 // YouTube, Vimeo, and Google Drive get an iframe; everything else a <video>.
 
+/** Insert Cloudinary's q_auto,f_auto transformation — saves ~30–50% bandwidth. */
+function optimizeCloudinary(url: string): string {
+  if (!url.includes("res.cloudinary.com")) return url;
+  if (url.includes("/q_auto")) return url;
+  return url.replace("/upload/", "/upload/q_auto,f_auto/");
+}
+
 function resolveEmbed(
   url: string
 ): { type: "iframe"; src: string } | { type: "video"; src: string } {
@@ -36,7 +43,7 @@ function resolveEmbed(
       src: `https://drive.google.com/file/d/${drive[1]}/preview`,
     };
 
-  return { type: "video", src: url };
+  return { type: "video", src: optimizeCloudinary(url) };
 }
 
 function isYouTubeUrl(url: string) {
