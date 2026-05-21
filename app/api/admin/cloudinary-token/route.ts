@@ -41,7 +41,7 @@ export async function POST() {
   // be included here too, sorted alphabetically, before the secret.
   const timestamp = Math.floor(Date.now() / 1000);
   const signature = crypto
-    .createHash("sha256")
+    .createHash("sha1")
     .update(`timestamp=${timestamp}${apiSecret}`)
     .digest("hex");
 
