@@ -3,18 +3,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { CATEGORIES } from "@/lib/categories";
 import { useLang, type Translations } from "@/lib/i18n";
+import { optimizeCloudinary } from "@/lib/cloudinary";
 import type { Clip } from "@/lib/clips-store";
 
 // ── Embed resolver ────────────────────────────────────────────────────────────
 // Accepts any URL and returns the right player type.
 // YouTube, Vimeo, and Google Drive get an iframe; everything else a <video>.
-
-/** Insert Cloudinary's q_auto,f_auto transformation — saves ~30–50% bandwidth. */
-function optimizeCloudinary(url: string): string {
-  if (!url.includes("res.cloudinary.com")) return url;
-  if (url.includes("/q_auto")) return url;
-  return url.replace("/upload/", "/upload/q_auto,f_auto/");
-}
 
 function resolveEmbed(
   url: string
@@ -79,9 +73,13 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
   const touchStartY = useRef<number>(0);
   const [videoError, setVideoError] = useState(false);
 
-  useEffect(() => {
+  // Reset the per-clip error flag whenever the user navigates — derived during
+  // render to avoid a cascading setState-in-effect. (React 19 lint rule.)
+  const [prevClipIndex, setPrevClipIndex] = useState(clipIndex);
+  if (prevClipIndex !== clipIndex) {
+    setPrevClipIndex(clipIndex);
     setVideoError(false);
-  }, [clipIndex]);
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

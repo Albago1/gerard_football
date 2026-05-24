@@ -19,6 +19,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { logout } from "./actions";
 import { CATEGORIES } from "@/lib/categories";
 import type { Clip } from "@/lib/clips-store";
@@ -765,7 +766,7 @@ export default function AdminDashboard() {
           </h1>
         </div>
         <div className="flex items-center gap-4">
-          <a
+          <Link
             href="/"
             className="flex items-center gap-1.5 text-zinc-600 hover:text-white text-xs uppercase tracking-widest transition-colors"
           >
@@ -783,7 +784,7 @@ export default function AdminDashboard() {
               <path d="M15 18l-6-6 6-6" />
             </svg>
             Main page
-          </a>
+          </Link>
           <form action={logout}>
             <button
               type="submit"

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useLang } from "@/lib/i18n";
+import { optimizeCloudinary } from "@/lib/cloudinary";
 import type { Clip } from "@/lib/clips-store";
 
 // ── URL resolver ──────────────────────────────────────────────────────────────
@@ -11,18 +12,6 @@ type Embed =
   | { kind: "vimeo";   id: string }
   | { kind: "video";   src: string }
   | { kind: "none" };
-
-/**
- * Insert Cloudinary's automatic quality + format transformations into the URL.
- * `q_auto` picks a smart bitrate (typically 30-50% smaller than the original)
- * and `f_auto` serves WebM/AV1 to browsers that support it. Safe no-op for
- * non-Cloudinary URLs.
- */
-function optimizeCloudinary(url: string): string {
-  if (!url.includes("res.cloudinary.com")) return url;
-  if (url.includes("/q_auto")) return url; // already optimized
-  return url.replace("/upload/", "/upload/q_auto,f_auto/");
-}
 
 function resolveEmbed(url?: string): Embed {
   if (!url) return { kind: "none" };
@@ -334,10 +323,14 @@ export default function HeroReel() {
     ? resolveEmbed(featuredClip.videoUrl).kind
     : "none";
 
-  // Reset progress whenever the featured clip changes
-  useEffect(() => {
+  // Reset progress when the featured clip changes — derived during render
+  // rather than via setState-in-effect, which would trigger a cascading render.
+  // See: https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [prevFeatured, setPrevFeatured] = useState(featured);
+  if (prevFeatured !== featured) {
+    setPrevFeatured(featured);
     setProgress(0);
-  }, [featured]);
+  }
 
   // For YouTube/Vimeo we don't know when the video ends, so use a fallback timer.
   // Native videos drive the timer themselves via onEnded / onTimeUpdate.

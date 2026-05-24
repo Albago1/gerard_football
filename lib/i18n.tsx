@@ -2,9 +2,9 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
-  useState,
-  useEffect,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 
@@ -256,18 +256,40 @@ const LanguageContext = createContext<LanguageContextType>({
   t: translations.en,
 });
 
+// ── localStorage subscription (useSyncExternalStore) ─────────────────────────
+// Subscribing this way instead of useEffect+useState avoids the React 19
+// set-state-in-effect warning and is tearing-safe under concurrent rendering.
+
+const STORAGE_KEY = "gg-lang";
+const LANG_CHANGE_EVENT = "gg-lang-change";
+
+function subscribe(callback: () => void) {
+  // `storage` only fires for OTHER tabs/windows. We dispatch our own event
+  // for same-tab updates so every consumer re-renders together.
+  window.addEventListener("storage", callback);
+  window.addEventListener(LANG_CHANGE_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(LANG_CHANGE_EVENT, callback);
+  };
+}
+
+function getSnapshot(): Lang {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  return stored === "de" ? "de" : "en";
+}
+
+function getServerSnapshot(): Lang {
+  return "en";
+}
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>("en");
+  const lang = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  useEffect(() => {
-    const stored = localStorage.getItem("gg-lang") as Lang | null;
-    if (stored === "en" || stored === "de") setLangState(stored);
+  const setLang = useCallback((l: Lang) => {
+    localStorage.setItem(STORAGE_KEY, l);
+    window.dispatchEvent(new Event(LANG_CHANGE_EVENT));
   }, []);
-
-  function setLang(l: Lang) {
-    setLangState(l);
-    localStorage.setItem("gg-lang", l);
-  }
 
   return (
     <LanguageContext.Provider value={{ lang, setLang, t: translations[lang] }}>
