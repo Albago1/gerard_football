@@ -12,7 +12,7 @@ export default function PlayerSnapshot() {
     { label: s.labels.height,      value: "187 cm" },
     { label: s.labels.weight,      value: "78 kg" },
     { label: s.labels.nationality, value: s.values.nationality },
-    { label: s.labels.club,        value: "SC Staaken U18" },
+    { label: s.labels.club,        value: "SC Staaken" },
     { label: s.labels.strongFoot,  value: s.values.strongFoot, accent: "10 / 10" },
     { label: s.labels.weakFoot,    value: s.values.weakFoot,   accent: "8 / 10" },
   ];

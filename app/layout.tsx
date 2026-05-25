@@ -19,7 +19,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Gerard Gani – Attacking Player | ST / LW | Berlin",
   description:
-    "18-year-old striker and left winger from SC Staaken U18, Berlin. Two-footed attacking player available for trials. Direct, goal-oriented, strong finishing.",
+    "18-year-old striker and left winger from SC Staaken, Berlin. Two-footed attacking player available for trials. Direct, goal-oriented, strong finishing.",
   keywords: [
     "Gerard Gani",
     "footballer",
@@ -30,13 +30,12 @@ export const metadata: Metadata = {
     "trial",
     "SC Staaken",
     "Albanian footballer",
-    "U18 Berlin",
     "Fussball Probespieler",
   ],
   openGraph: {
     title: "Gerard Gani – Attacking Player | Berlin",
     description:
-      "18-year-old striker / left winger from SC Staaken U18. Two-footed, direct, goal-oriented. Available for trial.",
+      "18-year-old striker / left winger from SC Staaken. Two-footed, direct, goal-oriented. Available for trial.",
     type: "website",
     locale: "en_GB",
   },
@@ -44,7 +43,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Gerard Gani – Attacking Player | Berlin",
     description:
-      "18-year-old striker / LW. SC Staaken U18. Available for trial.",
+      "18-year-old striker / LW. SC Staaken. Available for trial.",
   },
   robots: {
     index: true,

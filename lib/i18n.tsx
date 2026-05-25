@@ -20,7 +20,7 @@ export const translations = {
       requestTrial: "Request Trial",
     },
     hero: {
-      club: "SC Staaken U18 — Berlin, Germany",
+      club: "SC Staaken — Berlin, Germany",
       availableBadge: "Available for trials",
       striker: "Striker",
       winger: "Left Winger",
@@ -35,7 +35,7 @@ export const translations = {
       eyebrow: "Who He Is",
       heading1: "Player",
       heading2: "Profile",
-      p1: "Gerard Gani is 18, based in Berlin, and plays for SC Staaken U18. He's a striker first, left winger when needed — his game is built around one thing: getting into positions to score and creating problems for defenders.",
+      p1: "Gerard Gani is 18, based in Berlin, and plays for SC Staaken. He's a striker first, left winger when needed — his game is built around one thing: getting into positions to score and creating problems for defenders.",
       p2: "He's two-footed. Right foot rated 10/10, left at 8/10. That's not a marketing line — it means he can finish from both sides in tight spaces, cut inside or go wide, and keep defenders honest in every situation.",
       p3: "At 187 cm and 78 kg he's physically ready for senior football. He presses from the front, wins the ball back in dangerous areas, and doesn't jog back when the team loses possession. The defensive side of the game is not an afterthought for him.",
       quote: "He is available for trial immediately. No contract required to take a look — one training session is enough to judge.",
@@ -121,7 +121,7 @@ export const translations = {
       notes: { email: "Primary contact — responds within 24h", whatsapp: "Preferred — fastest response", phone: "Call or SMS", video: "Season 2024/25" },
     },
     footer: {
-      tagline: "Gerard Gani · Attacking Player · SC Staaken U18 · Berlin, Germany",
+      tagline: "Gerard Gani · Attacking Player · SC Staaken · Berlin, Germany",
       verification: "All information on this page is real and can be verified on request.",
     },
     mobileCta: "Invite for Trial",
@@ -136,7 +136,7 @@ export const translations = {
       requestTrial: "Probetraining",
     },
     hero: {
-      club: "SC Staaken U18 — Berlin, Deutschland",
+      club: "SC Staaken — Berlin, Deutschland",
       availableBadge: "Verfügbar für Probetraining",
       striker: "Stürmer",
       winger: "Linksaußen",
@@ -151,7 +151,7 @@ export const translations = {
       eyebrow: "Wer Er Ist",
       heading1: "Spieler",
       heading2: "Profil",
-      p1: "Gerard Gani ist 18 Jahre alt, lebt in Berlin und spielt für SC Staaken U18. Er ist primär Stürmer, bei Bedarf auch Linksaußen — sein Spiel dreht sich um eines: in Abschlussposition zu kommen und Verteidigern Probleme zu bereiten.",
+      p1: "Gerard Gani ist 18 Jahre alt, lebt in Berlin und spielt für SC Staaken. Er ist primär Stürmer, bei Bedarf auch Linksaußen — sein Spiel dreht sich um eines: in Abschlussposition zu kommen und Verteidigern Probleme zu bereiten.",
       p2: "Er ist beidfüßig. Rechter Fuß 10/10, linker Fuß 8/10. Das ist keine Marketingaussage — er kann von beiden Seiten in engen Räumen abschließen, nach innen ziehen oder außen gehen und Verteidiger in jeder Situation beschäftigen.",
       p3: "Mit 187 cm und 78 kg ist er körperlich bereit für den Erwachsenenfußball. Er presst von vorne, gewinnt den Ball in gefährlichen Zonen zurück und joggt nicht zurück, wenn das Team den Ball verliert. Der defensive Aspekt ist für ihn keine Nebensache.",
       quote: "Er ist sofort für ein Probetraining verfügbar. Kein Vertrag nötig — eine Trainingseinheit reicht zur Beurteilung.",
@@ -237,7 +237,7 @@ export const translations = {
       notes: { email: "Hauptkontakt — Antwort innerhalb von 24h", whatsapp: "Bevorzugt — schnellste Antwort", phone: "Anruf oder SMS", video: "Saison 2024/25" },
     },
     footer: {
-      tagline: "Gerard Gani · Angreifer · SC Staaken U18 · Berlin, Deutschland",
+      tagline: "Gerard Gani · Angreifer · SC Staaken · Berlin, Deutschland",
       verification: "Alle Angaben auf dieser Seite sind real und können auf Anfrage verifiziert werden.",
     },
     mobileCta: "Zum Probetraining einladen",
