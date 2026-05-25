@@ -353,7 +353,7 @@ function ReelCard({
     <button
       type="button"
       onClick={onClick}
-      className="group relative flex-shrink-0 w-[144px] sm:w-[168px] bg-[#0f0f0f] border border-[#1e1e1e] hover:border-[#e11d48]/50 transition-all duration-200 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e11d48]"
+      className="group relative flex-shrink-0 w-[176px] sm:w-[208px] bg-[#0f0f0f] border border-[#1e1e1e] hover:border-[#e11d48]/50 transition-all duration-200 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e11d48]"
       style={{ aspectRatio: "9/16" }}
       aria-label={`${categoryTitle}: ${clip.title}`}
     >
@@ -515,7 +515,7 @@ function ReelRow({
 
         {/* Add-clip placeholder */}
         <div
-          className="flex-shrink-0 w-[144px] sm:w-[168px] border border-dashed border-[#1a1a1a] flex flex-col items-center justify-center gap-2"
+          className="flex-shrink-0 w-[176px] sm:w-[208px] border border-dashed border-[#1a1a1a] flex flex-col items-center justify-center gap-2"
           style={{ aspectRatio: "9/16" }}
           aria-hidden="true"
         >
