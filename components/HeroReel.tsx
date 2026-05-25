@@ -63,11 +63,12 @@ function formatMatchDate(iso: string | undefined, lang: "en" | "de"): string | n
 type FeaturedProps = {
   clip: Clip;
   inView: boolean;
+  paused: boolean;
   onEnded: () => void;
   onProgress: (ratio: number) => void;
 };
 
-function FeaturedPlayer({ clip, inView, onEnded, onProgress }: FeaturedProps) {
+function FeaturedPlayer({ clip, inView, paused, onEnded, onProgress }: FeaturedProps) {
   const { lang } = useLang();
   const [showThumb, setShowThumb] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -77,19 +78,30 @@ function FeaturedPlayer({ clip, inView, onEnded, onProgress }: FeaturedProps) {
   const fresh    = isNewClip(clip);
   const matchStr = formatMatchDate(clip.matchDate, lang);
 
+  // When we transition into the paused state, force the thumbnail back on so
+  // the next replay (which may not change the clip index, e.g. single-clip
+  // reel) starts from a thumbnail rather than a blank frame.
+  const [prevPaused, setPrevPaused] = useState(paused);
+  if (prevPaused !== paused) {
+    setPrevPaused(paused);
+    if (paused) setShowThumb(true);
+  }
+
   // For iframes (YouTube/Vimeo) we can't detect when they actually start
   // rendering, so we fade the thumbnail away after a short delay.
   useEffect(() => {
+    if (paused) return;
     if (embed.kind === "youtube" || embed.kind === "vimeo") {
       const t = setTimeout(() => setShowThumb(false), 700);
       return () => clearTimeout(t);
     }
-  }, [embed.kind]);
+  }, [embed.kind, paused]);
 
   // Some desktop browsers ignore the autoPlay attribute on mount if `muted`
   // wasn't synchronously true at the time the element was attached to the
   // DOM (a React quirk). Force muted + .play() imperatively as a backup.
   useEffect(() => {
+    if (paused) return;
     if (embed.kind !== "video") return;
     const v = videoRef.current;
     if (!v) return;
@@ -99,7 +111,7 @@ function FeaturedPlayer({ clip, inView, onEnded, onProgress }: FeaturedProps) {
     tryPlay();
     const t = setTimeout(tryPlay, 250);
     return () => clearTimeout(t);
-  }, [embed.kind, clip.videoUrl]);
+  }, [embed.kind, clip.videoUrl, paused]);
 
   // Pause/resume native video when reel scrolls in or out of view —
   // saves Cloudinary bandwidth when nobody's watching.
@@ -107,12 +119,12 @@ function FeaturedPlayer({ clip, inView, onEnded, onProgress }: FeaturedProps) {
     if (embed.kind !== "video") return;
     const v = videoRef.current;
     if (!v) return;
-    if (inView) {
+    if (inView && !paused) {
       v.play().catch(() => {});
     } else {
       v.pause();
     }
-  }, [inView, embed.kind]);
+  }, [inView, embed.kind, paused]);
 
   // YouTube / Vimeo embed src — autoplay muted, looped (parent advances on a timer)
   let iframeSrc: string | null = null;
@@ -122,10 +134,14 @@ function FeaturedPlayer({ clip, inView, onEnded, onProgress }: FeaturedProps) {
     iframeSrc = `https://player.vimeo.com/video/${embed.id}?autoplay=1&muted=1&loop=1&title=0&byline=0&portrait=0`;
   }
 
+  // When paused (cycle done), keep the thumbnail visible and skip the play icon —
+  // the parent overlays a "Play again" button on top instead.
+  const thumbVisible = showThumb || paused;
+
   return (
     <div className="relative w-full bg-[#0a0a0a] border border-[#1e1e1e] overflow-hidden" style={{ aspectRatio: "9/16" }}>
       {/* Thumbnail (covers the video until it starts playing) */}
-      {thumb && showThumb && (
+      {thumb && thumbVisible && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={thumb}
@@ -134,7 +150,7 @@ function FeaturedPlayer({ clip, inView, onEnded, onProgress }: FeaturedProps) {
           className="absolute inset-0 w-full h-full object-cover z-[5]"
         />
       )}
-      {showThumb && (
+      {showThumb && !paused && (
         <>
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent z-[5]" />
           <div className="absolute inset-0 flex items-center justify-center z-[5]">
@@ -147,7 +163,8 @@ function FeaturedPlayer({ clip, inView, onEnded, onProgress }: FeaturedProps) {
         </>
       )}
 
-      {iframeSrc && (
+      {/* Iframe is unmounted when paused so YouTube/Vimeo stop streaming. */}
+      {iframeSrc && !paused && (
         <iframe
           src={iframeSrc}
           className="absolute inset-0 w-full h-full border-0"
@@ -158,7 +175,7 @@ function FeaturedPlayer({ clip, inView, onEnded, onProgress }: FeaturedProps) {
       )}
 
       {/* Native video — autoplay muted, no loop so onEnded fires and we can advance */}
-      {embed.kind === "video" && (
+      {embed.kind === "video" && !paused && (
         <video
           ref={videoRef}
           src={embed.src}
@@ -273,6 +290,9 @@ export default function HeroReel() {
   const [featured, setFeatured] = useState(0);
   const [progress, setProgress] = useState(0);
   const [inView, setInView] = useState(false);
+  // After one full pass through the curated list we freeze playback to keep
+  // Cloudinary bandwidth bounded. A "Play again" overlay lets the visitor restart.
+  const [cycleDone, setCycleDone] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
 
   // Track whether the reel is visible — pause playback + rotation when offscreen.
@@ -334,10 +354,11 @@ export default function HeroReel() {
 
   // For YouTube/Vimeo we don't know when the video ends, so use a fallback timer.
   // Native videos drive the timer themselves via onEnded / onTimeUpdate.
-  // Skip the timer entirely when offscreen — no need to advance clips no one is watching.
+  // Skip the timer entirely when offscreen or after the cycle finishes —
+  // no point advancing clips no one is watching.
   useEffect(() => {
-    if (clips.length < 2) return;
-    if (!inView) return;
+    if (clips.length === 0) return;
+    if (!inView || cycleDone) return;
     if (featuredKind !== "youtube" && featuredKind !== "vimeo") return;
 
     let step = 0;
@@ -345,16 +366,39 @@ export default function HeroReel() {
       step += 1;
       const total = IFRAME_FALLBACK_MS / TICK_MS;
       if (step >= total) {
-        setFeatured((f) => (f + 1) % clips.length);
+        advance();
         step = 0;
       }
       setProgress((step / total) * 100);
     }, TICK_MS);
     return () => clearInterval(id);
-  }, [featured, clips.length, featuredKind, inView]);
+    // `advance` is stable in closure since it reads from current state via setter callbacks.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [featured, clips.length, featuredKind, inView, cycleDone]);
+
+  function advance() {
+    setFeatured((f) => {
+      if (f >= clips.length - 1) {
+        setCycleDone(true);
+        return f;
+      }
+      return f + 1;
+    });
+  }
 
   function handleEnded() {
-    setFeatured((f) => (f + 1) % clips.length);
+    advance();
+  }
+
+  function replay() {
+    setCycleDone(false);
+    setFeatured(0);
+    setProgress(0);
+  }
+
+  function jumpTo(index: number) {
+    setCycleDone(false);
+    setFeatured(index);
   }
 
   function handleProgress(ratio: number) {
@@ -412,16 +456,35 @@ export default function HeroReel() {
               key={`${featured}-${featuredClip.id}`}
               clip={featuredClip}
               inView={inView}
+              paused={cycleDone}
               onEnded={handleEnded}
               onProgress={handleProgress}
             />
-            {clips.length > 1 && (
+            {clips.length > 1 && !cycleDone && (
               <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-black/40 z-20 overflow-hidden">
                 <div
                   className="h-full bg-[#e11d48] transition-[width] duration-100 ease-linear"
                   style={{ width: `${progress}%` }}
                 />
               </div>
+            )}
+            {cycleDone && (
+              <button
+                type="button"
+                onClick={replay}
+                className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/55 backdrop-blur-[2px] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e11d48]"
+                aria-label={r.replay}
+              >
+                <div className="w-16 h-16 rounded-full border border-white/40 bg-black/40 flex items-center justify-center transition-transform duration-200 hover:scale-105">
+                  <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M21 12a9 9 0 1 1-3.51-7.13" />
+                    <polyline points="21 4 21 10 15 10" />
+                  </svg>
+                </div>
+                <span className="text-xs font-semibold uppercase tracking-[0.2em]">
+                  {r.replay}
+                </span>
+              </button>
             )}
           </div>
 
@@ -432,7 +495,7 @@ export default function HeroReel() {
                 <MiniCard
                   key={clip.id}
                   clip={clip}
-                  onClick={() => setFeatured(clips.indexOf(clip))}
+                  onClick={() => jumpTo(clips.indexOf(clip))}
                 />
               ))}
             </div>
@@ -442,7 +505,7 @@ export default function HeroReel() {
                 <MiniCard
                   key={clip.id}
                   clip={clip}
-                  onClick={() => setFeatured(clips.indexOf(clip))}
+                  onClick={() => jumpTo(clips.indexOf(clip))}
                 />
               ))}
             </div>

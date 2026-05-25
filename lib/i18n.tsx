@@ -89,6 +89,7 @@ export const translations = {
       heading: "Watch the Reel",
       cta: "Browse all footage",
       noClips: "Clips coming soon",
+      replay: "Play again",
     },
     trial: {
       eyebrow: "The Proposition",
@@ -204,6 +205,7 @@ export const translations = {
       heading: "Den Reel ansehen",
       cta: "Alle Videos durchsuchen",
       noClips: "Clips folgen in Kürze",
+      replay: "Erneut abspielen",
     },
     trial: {
       eyebrow: "Das Angebot",
