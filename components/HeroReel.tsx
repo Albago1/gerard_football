@@ -29,11 +29,11 @@ function resolveEmbed(url?: string): Embed {
   return { kind: "video", src: optimizeCloudinary(url) };
 }
 
-function getAutoThumb(embed: Embed, clip: Clip): string | null {
+function getAutoThumb(embed: Embed, clip: Clip): string {
   if (clip.thumbnailUrl) return optimizeCloudinary(clip.thumbnailUrl);
   if (embed.kind === "youtube")
     return `https://img.youtube.com/vi/${embed.id}/hqdefault.jpg`;
-  return null;
+  return `/thumbnails/${clip.category}.jpg`;
 }
 
 // ── Date helpers ──────────────────────────────────────────────────────────────

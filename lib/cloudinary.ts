@@ -9,3 +9,16 @@ export function optimizeCloudinary(url: string): string {
   if (url.includes("/q_auto")) return url;
   return url.replace("/upload/", "/upload/q_auto,f_auto/");
 }
+
+/**
+ * Returns the thumbnail URL for a clip. If the clip has no custom thumbnail,
+ * falls back to the section default at /public/thumbnails/{category}.jpg.
+ */
+export function clipThumbnail(clip: {
+  thumbnailUrl?: string;
+  category: string;
+}): string {
+  const url = clip.thumbnailUrl?.trim();
+  if (url) return optimizeCloudinary(url);
+  return `/thumbnails/${clip.category}.jpg`;
+}

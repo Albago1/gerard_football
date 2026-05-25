@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { CATEGORIES } from "@/lib/categories";
 import { useLang, type Translations } from "@/lib/i18n";
-import { optimizeCloudinary } from "@/lib/cloudinary";
+import { clipThumbnail, optimizeCloudinary } from "@/lib/cloudinary";
 import type { Clip } from "@/lib/clips-store";
 
 // ── Embed resolver ────────────────────────────────────────────────────────────
@@ -358,25 +358,13 @@ function ReelCard({
       aria-label={`${categoryTitle}: ${clip.title}`}
     >
       {/* Thumbnail */}
-      {clip.thumbnailUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={clip.thumbnailUrl}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-      ) : (
-        <div
-          className="absolute inset-0 opacity-[0.07]"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%)",
-            backgroundSize: "14px 14px",
-          }}
-          aria-hidden="true"
-        />
-      )}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={clipThumbnail(clip)}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full object-cover"
+      />
 
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/5" />
 
