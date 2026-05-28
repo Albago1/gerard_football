@@ -3,7 +3,6 @@ import Hero from "@/components/Hero";
 import HeroReel from "@/components/HeroReel";
 import PlayerProfile from "@/components/PlayerProfile";
 import WhyInvite from "@/components/WhyInvite";
-import Strengths from "@/components/Strengths";
 import VideoLibrary from "@/components/VideoLibrary";
 import TrialRequest from "@/components/TrialRequest";
 import Contact from "@/components/Contact";
@@ -20,7 +19,6 @@ export default function Home() {
         <HeroReel />
         <PlayerProfile />
         <WhyInvite />
-        <Strengths />
         <VideoLibrary />
         <TrialRequest />
         <Contact />

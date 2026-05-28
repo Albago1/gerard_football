@@ -14,7 +14,6 @@ export const translations = {
   en: {
     nav: {
       profile: "Profile",
-      strengths: "Strengths",
       videos: "Videos",
       contact: "Contact",
       requestTrial: "Request Trial",
@@ -39,18 +38,6 @@ export const translations = {
       p2: "He's two-footed. Right foot rated 10/10, left at 8/10. That's not a marketing line — it means he can finish from both sides in tight spaces, cut inside or go wide, and keep defenders honest in every situation.",
       p3: "At 187 cm and 78 kg he's physically ready for senior football. He presses from the front, wins the ball back in dangerous areas, and doesn't jog back when the team loses possession. The defensive side of the game is not an afterthought for him.",
       quote: "He is available for trial immediately. No contract required to take a look — one training session is enough to judge.",
-    },
-    strengths: {
-      eyebrow: "What I Bring",
-      heading: "Key Strengths",
-      items: [
-        { title: "Finishing", desc: "Clinical in front of goal. Consistent under pressure with both feet — from range and tight angles." },
-        { title: "Direct Runs", desc: "Aggressive vertical runs in behind the line. Exploits space and challenges the offside trap." },
-        { title: "1v1 Attacking", desc: "Comfortable taking on defenders with pace and technique. Uses body feints and sharp change of direction." },
-        { title: "Chance Creation", desc: "Reads the game to create dangerous situations — through individual actions and combination play." },
-        { title: "Defensive Work Rate", desc: "Presses from the front, tracks back when needed. Contributes defensively and sets the tone for the team." },
-        { title: "Two-Footed", desc: "Right 10/10 · Left 8/10. Equally dangerous from both sides — keeps defenders constantly guessing." },
-      ],
     },
     snapshot: {
       eyebrow: "Player Profile",
@@ -130,7 +117,6 @@ export const translations = {
   de: {
     nav: {
       profile: "Profil",
-      strengths: "Stärken",
       videos: "Videos",
       contact: "Kontakt",
       requestTrial: "Probetraining",
@@ -155,18 +141,6 @@ export const translations = {
       p2: "Er ist beidfüßig. Rechter Fuß 10/10, linker Fuß 8/10. Das ist keine Marketingaussage — er kann von beiden Seiten in engen Räumen abschließen, nach innen ziehen oder außen gehen und Verteidiger in jeder Situation beschäftigen.",
       p3: "Mit 187 cm und 78 kg ist er körperlich bereit für den Erwachsenenfußball. Er presst von vorne, gewinnt den Ball in gefährlichen Zonen zurück und joggt nicht zurück, wenn das Team den Ball verliert. Der defensive Aspekt ist für ihn keine Nebensache.",
       quote: "Er ist sofort für ein Probetraining verfügbar. Kein Vertrag nötig — eine Trainingseinheit reicht zur Beurteilung.",
-    },
-    strengths: {
-      eyebrow: "Was Ich Mitbringe",
-      heading: "Schlüsselstärken",
-      items: [
-        { title: "Abschluss", desc: "Klinisch vor dem Tor. Konstant unter Druck mit beiden Füßen — aus der Distanz und aus engen Winkeln." },
-        { title: "Direktläufe", desc: "Aggressive Tiefenläufe hinter die Abwehrlinie. Nutzt Räume und fordert die Abseitsfalle heraus." },
-        { title: "1-gegen-1 Angriff", desc: "Sicher im Duell mit Verteidigern durch Tempo und Technik. Nutzt Körpertäuschungen und scharfe Richtungswechsel." },
-        { title: "Chancenkreation", desc: "Liest das Spiel, um gefährliche Situationen zu kreieren — durch individuelle Aktionen und Kombinationsspiel." },
-        { title: "Defensives Engagement", desc: "Presst von vorne, läuft zurück wenn nötig. Trägt defensiv bei und gibt das Tempo für das Team vor." },
-        { title: "Beidfüßig", desc: "Rechts 10/10 · Links 8/10. Gleich gefährlich von beiden Seiten — hält Verteidiger ständig im Ungewissen." },
-      ],
     },
     snapshot: {
       eyebrow: "Spielerprofil",

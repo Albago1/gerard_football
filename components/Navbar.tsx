@@ -9,10 +9,9 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navLinks = [
-    { label: t.nav.profile,   href: "#profile" },
-    { label: t.nav.strengths, href: "#strengths" },
-    { label: t.nav.videos,    href: "#videos" },
-    { label: t.nav.contact,   href: "#contact" },
+    { label: t.nav.profile, href: "#profile" },
+    { label: t.nav.videos,  href: "#videos" },
+    { label: t.nav.contact, href: "#contact" },
   ];
 
   const otherLang: Lang = lang === "en" ? "de" : "en";
