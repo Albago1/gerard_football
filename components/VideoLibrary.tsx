@@ -129,8 +129,7 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
       }}
     >
       <div
-        className="relative flex flex-col items-center w-full px-4"
-        style={{ maxWidth: "340px" }}
+        className="relative flex flex-col items-center w-full px-2 sm:px-4 max-w-[min(96vw,440px)] sm:max-w-[340px]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close */}
@@ -171,7 +170,7 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
         {/* Video frame — 9:16 */}
         <div
           className="relative w-full bg-[#0a0a0a] border border-[#222] overflow-hidden"
-          style={{ aspectRatio: "9/16", maxHeight: "58vh" }}
+          style={{ aspectRatio: "9/16", maxHeight: "72vh" }}
         >
           {embed ? (
             embed.type === "iframe" ? (
