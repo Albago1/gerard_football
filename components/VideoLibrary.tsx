@@ -282,7 +282,7 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
           if (hasPrev) onNavigate(clipIndex - 1);
         }}
         disabled={!hasPrev}
-        className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 w-10 h-10 border border-white/8 hover:border-white/25 text-white/25 hover:text-white disabled:opacity-0 disabled:pointer-events-none flex items-center justify-center transition-all duration-200"
+        className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm border border-white/25 text-white/90 hover:text-white hover:border-white/60 disabled:opacity-0 disabled:pointer-events-none flex items-center justify-center transition-colors"
         aria-label="Previous clip"
       >
         <svg
@@ -306,7 +306,7 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
           if (hasNext) onNavigate(clipIndex + 1);
         }}
         disabled={!hasNext}
-        className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 w-10 h-10 border border-white/8 hover:border-white/25 text-white/25 hover:text-white disabled:opacity-0 disabled:pointer-events-none flex items-center justify-center transition-all duration-200"
+        className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm border border-white/25 text-white/90 hover:text-white hover:border-white/60 disabled:opacity-0 disabled:pointer-events-none flex items-center justify-center transition-colors"
         aria-label="Next clip"
       >
         <svg
