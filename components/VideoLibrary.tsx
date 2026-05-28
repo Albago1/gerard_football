@@ -129,7 +129,7 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
       }}
     >
       <div
-        className="relative flex flex-col items-center w-full px-2 sm:px-4 max-w-[min(96vw,440px)] sm:max-w-[340px]"
+        className="relative flex flex-col items-center w-full px-1 sm:px-4 max-w-[min(98vw,460px)] sm:max-w-[340px]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close */}
@@ -155,7 +155,7 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
         </button>
 
         {/* Category + progress */}
-        <div className="flex items-center justify-between w-full mb-3">
+        <div className="flex items-center justify-between w-full mb-2 sm:mb-3">
           <div className="flex items-center gap-2">
             <div className="w-3 h-px bg-[#e11d48]" />
             <span className="text-zinc-500 text-[10px] font-bold tracking-[0.2em] uppercase">
@@ -170,7 +170,7 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
         {/* Video frame — 9:16 */}
         <div
           className="relative w-full bg-[#0a0a0a] border border-[#222] overflow-hidden"
-          style={{ aspectRatio: "9/16", maxHeight: "72vh" }}
+          style={{ aspectRatio: "9/16", maxHeight: "82vh" }}
         >
           {embed ? (
             embed.type === "iframe" ? (
@@ -233,7 +233,7 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
         </div>
 
         {/* Clip info */}
-        <div className="w-full mt-3">
+        <div className="w-full mt-2 sm:mt-3">
           <h3 className="font-heading font-bold text-white uppercase text-xl tracking-wide leading-tight">
             {clip.title}
           </h3>
@@ -246,7 +246,7 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
 
         {/* Dot nav */}
         <div
-          className="flex items-center gap-2 mt-5"
+          className="flex items-center gap-2 mt-3 sm:mt-5"
           role="tablist"
           aria-label="Clip navigation"
         >
@@ -326,7 +326,7 @@ function ClipModal({ category, clipIndex, onClose, onNavigate }: ModalProps) {
 function SwipeHint() {
   const { t } = useLang();
   return (
-    <p className="text-zinc-800 text-[10px] uppercase tracking-widest mt-3 sm:hidden">
+    <p className="text-zinc-800 text-[10px] uppercase tracking-widest mt-2 sm:hidden">
       {t.videos.swipeHint}
     </p>
   );
