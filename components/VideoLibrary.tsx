@@ -353,7 +353,7 @@ function ReelCard({
     <button
       type="button"
       onClick={onClick}
-      className="group relative flex-shrink-0 w-[85vw] max-w-[280px] sm:w-[208px] snap-start bg-[#0f0f0f] border border-[#1e1e1e] hover:border-[#e11d48]/50 transition-all duration-200 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e11d48]"
+      className="group relative flex-shrink-0 w-[176px] sm:w-[208px] bg-[#0f0f0f] border border-[#1e1e1e] hover:border-[#e11d48]/50 transition-all duration-200 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e11d48]"
       style={{ aspectRatio: "9/16" }}
       aria-label={`${categoryTitle}: ${clip.title}`}
     >
@@ -490,12 +490,11 @@ function ReelRow({
         </div>
       </div>
 
-      {/* Horizontal scroll strip — snap on mobile for Instagram-reel feel,
-          loose on desktop so the row scrolls smoothly across many tiles. */}
+      {/* Horizontal scroll strip — free scroll (no snap) so it never gets stuck */}
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto px-5 sm:px-8 pb-3 scrollbar-hide snap-x snap-mandatory sm:snap-none"
-        style={{ touchAction: "pan-x", scrollPaddingLeft: "1.25rem" }}
+        className="flex gap-3 overflow-x-auto px-5 sm:px-8 pb-3 scrollbar-hide"
+        style={{ touchAction: "pan-x" }}
         role="list"
         aria-label={`${category.title} clips`}
       >
@@ -516,7 +515,7 @@ function ReelRow({
 
         {/* Add-clip placeholder */}
         <div
-          className="flex-shrink-0 w-[85vw] max-w-[280px] sm:w-[208px] snap-start border border-dashed border-[#1a1a1a] flex flex-col items-center justify-center gap-2"
+          className="flex-shrink-0 w-[176px] sm:w-[208px] border border-dashed border-[#1a1a1a] flex flex-col items-center justify-center gap-2"
           style={{ aspectRatio: "9/16" }}
           aria-hidden="true"
         >
