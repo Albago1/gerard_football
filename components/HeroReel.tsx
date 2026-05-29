@@ -154,8 +154,8 @@ function FeaturedPlayer({ clip, inView, paused, onEnded, onProgress }: FeaturedP
         <>
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent z-[5]" />
           <div className="absolute inset-0 flex items-center justify-center z-[5]">
-            <div className="w-14 h-14 rounded-full border border-white/20 bg-black/30 backdrop-blur-sm flex items-center justify-center">
-              <svg className="w-6 h-6 text-white ml-1" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-white/95 bg-black/55 backdrop-blur-sm shadow-2xl shadow-black/60 flex items-center justify-center">
+              <svg className="w-7 h-7 sm:w-8 sm:h-8 text-white ml-1" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M8 5v14l11-7z" />
               </svg>
             </div>
@@ -259,8 +259,8 @@ function MiniCard({ clip, onClick }: { clip: Clip; onClick: () => void }) {
       )}
 
       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center">
-          <svg className="w-3 h-3 text-white ml-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-white/95 bg-black/55 backdrop-blur-sm shadow-xl shadow-black/50 flex items-center justify-center">
+          <svg className="w-4 h-4 text-white ml-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M8 5v14l11-7z" />
           </svg>
         </div>

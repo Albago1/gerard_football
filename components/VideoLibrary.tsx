@@ -389,9 +389,9 @@ function ReelCard({
       )}
 
       {/* Play button */}
-      <div className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full border border-white/15 group-hover:border-[#e11d48] group-hover:bg-[#e11d48]/10 flex items-center justify-center transition-all duration-200">
+      <div className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-white/95 bg-black/55 backdrop-blur-sm shadow-2xl shadow-black/60 group-hover:border-[#e11d48] group-hover:bg-[#e11d48] group-hover:scale-110 flex items-center justify-center transition-all duration-200">
         <svg
-          className="w-4 h-4 text-white/40 group-hover:text-white ml-0.5 transition-colors duration-200"
+          className="w-5 h-5 sm:w-6 sm:h-6 text-white ml-0.5"
           viewBox="0 0 24 24"
           fill="currentColor"
           aria-hidden="true"
