@@ -56,9 +56,14 @@ export default function Hero() {
             {h.cta1}
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
           </a>
-          <a href="#videos" className="inline-flex items-center justify-center gap-2.5 border border-zinc-700 hover:border-zinc-400 text-white font-bold px-8 py-4 uppercase tracking-[0.15em] text-sm transition-colors duration-200">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
-            {h.cta2}
+          <a href="#videos" className="group relative inline-flex items-center justify-center gap-3 border border-[#e11d48]/30 hover:border-[#e11d48] bg-gradient-to-b from-[#e11d48]/[0.08] to-transparent text-white font-bold px-8 py-4 uppercase tracking-[0.15em] text-sm transition-colors duration-200">
+            <span className="pointer-events-none absolute -top-px left-0 w-6 h-px bg-[#e11d48]" aria-hidden="true" />
+            <span className="pointer-events-none absolute -top-px right-0 w-6 h-px bg-[#e11d48]" aria-hidden="true" />
+            <span className="pointer-events-none absolute -bottom-px left-0 w-6 h-px bg-[#e11d48]" aria-hidden="true" />
+            <span className="pointer-events-none absolute -bottom-px right-0 w-6 h-px bg-[#e11d48]" aria-hidden="true" />
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#e11d48] animate-bounce shrink-0" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+            <span className="group-hover:text-[#e11d48] transition-colors duration-200">{h.cta2}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#e11d48] animate-bounce shrink-0" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
           </a>
         </div>
 
