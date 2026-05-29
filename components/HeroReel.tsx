@@ -510,17 +510,50 @@ export default function HeroReel() {
               ))}
             </div>
 
-            <a
-              href="#videos"
-              className="sm:hidden mt-5 flex items-center gap-2 text-zinc-500 hover:text-white text-xs font-semibold uppercase tracking-[0.15em] transition-colors duration-200"
-            >
-              {r.cta}
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </a>
           </div>
         </div>
+
+        {/* Full-library prompt — bold visual cue so visitors who only watch the
+            featured reel still notice the categorized library further down. */}
+        <a
+          href="#videos"
+          className="group relative block mt-10 sm:mt-14 border border-[#e11d48]/30 hover:border-[#e11d48] bg-gradient-to-b from-[#e11d48]/[0.08] to-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e11d48] transition-colors duration-200"
+        >
+          <span className="pointer-events-none absolute -top-px left-0 w-10 h-px bg-[#e11d48]" aria-hidden="true" />
+          <span className="pointer-events-none absolute -top-px right-0 w-10 h-px bg-[#e11d48]" aria-hidden="true" />
+          <span className="pointer-events-none absolute -bottom-px left-0 w-10 h-px bg-[#e11d48]" aria-hidden="true" />
+          <span className="pointer-events-none absolute -bottom-px right-0 w-10 h-px bg-[#e11d48]" aria-hidden="true" />
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5 py-7 sm:py-9 px-6 text-center">
+            <svg
+              className="w-6 h-6 sm:w-7 sm:h-7 text-[#e11d48] animate-bounce shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+            <span className="font-heading font-black text-white uppercase text-xl sm:text-2xl tracking-wide leading-none group-hover:text-[#e11d48] transition-colors duration-200">
+              {r.cta}
+            </span>
+            <svg
+              className="w-6 h-6 sm:w-7 sm:h-7 text-[#e11d48] animate-bounce shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+        </a>
       </div>
     </section>
   );

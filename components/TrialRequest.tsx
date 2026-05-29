@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import { useLang } from "@/lib/i18n";
 
 export default function TrialRequest() {
@@ -35,10 +36,10 @@ export default function TrialRequest() {
 
         <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2 mt-14 text-white/40 text-xs tracking-widest uppercase" aria-label="Key facts">
           {tr.facts.map((fact, i) => (
-            <>
-              <li key={fact}>{fact}</li>
-              {i < tr.facts.length - 1 && <li key={`dot-${i}`} aria-hidden="true">·</li>}
-            </>
+            <Fragment key={fact}>
+              <li>{fact}</li>
+              {i < tr.facts.length - 1 && <li aria-hidden="true">·</li>}
+            </Fragment>
           ))}
         </ul>
       </div>

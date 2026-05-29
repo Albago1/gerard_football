@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type RefObject } from "react";
 import { CATEGORIES } from "@/lib/categories";
 import { useLang, type Translations } from "@/lib/i18n";
 import { clipThumbnail, optimizeCloudinary } from "@/lib/cloudinary";
@@ -544,6 +544,90 @@ function ReelRow({
   );
 }
 
+// ── More-below indicator ──────────────────────────────────────────────────────
+// Floating pill that shows "current row / total" with a bouncing chevron, to
+// signal that more reel rows exist below the fold. Hides once the last row
+// enters the viewport.
+
+function MoreBelowIndicator({
+  rowsRef,
+  total,
+}: {
+  rowsRef: RefObject<(HTMLDivElement | null)[]>;
+  total: number;
+}) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    const rowEls = rowsRef.current;
+    if (!rowEls || rowEls.length === 0) return;
+
+    const ratios = new Array(rowEls.length).fill(0);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const idx = Number((entry.target as HTMLElement).dataset.rowIndex);
+          ratios[idx] = entry.intersectionRatio;
+        }
+
+        let bestIdx = 0;
+        let bestRatio = 0;
+        for (let i = 0; i < ratios.length; i++) {
+          if (ratios[i] > bestRatio) {
+            bestRatio = ratios[i];
+            bestIdx = i;
+          }
+        }
+
+        const anyVisible = ratios.some((r) => r > 0);
+        const lastVisible = ratios[ratios.length - 1] > 0;
+
+        setShow(anyVisible && !lastVisible);
+        if (bestRatio > 0) setCurrentIndex(bestIdx);
+      },
+      { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] }
+    );
+
+    rowEls.forEach((el) => {
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [rowsRef]);
+
+  if (total <= 1) return null;
+
+  return (
+    <div
+      className={`fixed left-1/2 -translate-x-1/2 z-30 bottom-24 md:bottom-6 transition-opacity duration-300 pointer-events-none ${
+        show ? "opacity-100" : "opacity-0"
+      }`}
+      aria-hidden={!show}
+    >
+      <div className="flex items-center gap-2.5 bg-black/70 backdrop-blur-md border border-white/15 rounded-full pl-3.5 pr-3 py-2 shadow-2xl shadow-black/50">
+        <span className="text-white/95 text-[10px] font-bold tracking-[0.25em] uppercase tabular-nums">
+          {currentIndex + 1} / {total}
+        </span>
+        <span className="w-px h-3 bg-white/20" />
+        <svg
+          className="w-3.5 h-3.5 text-[#e11d48] animate-bounce"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Export ───────────────────────────────────────────────────────────────
 
 export default function VideoLibrary() {
@@ -554,6 +638,7 @@ export default function VideoLibrary() {
     categoryIndex: number;
     clipIndex: number;
   } | null>(null);
+  const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     fetch("/api/clips")
@@ -638,14 +723,26 @@ export default function VideoLibrary() {
         <div className="border-t border-[#111] mb-12" />
 
         {categoriesWithClips.map((category, categoryIndex) => (
-          <ReelRow
+          <div
             key={category.id}
-            category={category}
-            onClipClick={(clipIndex) => openClip(categoryIndex, clipIndex)}
-          />
+            ref={(el) => {
+              rowRefs.current[categoryIndex] = el;
+            }}
+            data-row-index={categoryIndex}
+          >
+            <ReelRow
+              category={category}
+              onClipClick={(clipIndex) => openClip(categoryIndex, clipIndex)}
+            />
+          </div>
         ))}
 
       </section>
+
+      <MoreBelowIndicator
+        rowsRef={rowRefs}
+        total={categoriesWithClips.length}
+      />
 
       {modal !== null && (
         <ClipModal
