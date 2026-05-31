@@ -72,6 +72,12 @@ function FeaturedPlayer({ clip, inView, paused, onEnded, onProgress }: FeaturedP
   const { lang } = useLang();
   const [showThumb, setShowThumb] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // onEnded changes identity every render (handleEnded is inlined). Keep a ref so
+  // the postMessage listener below doesn't need to be torn down on every tick.
+  const onEndedRef = useRef(onEnded);
+  useEffect(() => { onEndedRef.current = onEnded; }, [onEnded]);
 
   const embed    = resolveEmbed(clip.videoUrl);
   const thumb    = getAutoThumb(embed, clip);
@@ -126,13 +132,86 @@ function FeaturedPlayer({ clip, inView, paused, onEnded, onProgress }: FeaturedP
     }
   }, [inView, embed.kind, paused]);
 
-  // YouTube / Vimeo embed src — autoplay muted, looped (parent advances on a timer)
+  // YouTube / Vimeo embed src — autoplay muted, looped. loop=1 stays on so
+  // YouTube treats this as long-running playback and warms up to HD quality
+  // (without it, every fresh-mounted clip would start at ~360p and end before
+  // YT upgrades). We detect the wrap-around via the IFrame API to advance.
   let iframeSrc: string | null = null;
   if (embed.kind === "youtube") {
-    iframeSrc = `https://www.youtube.com/embed/${embed.id}?autoplay=1&mute=1&loop=1&playlist=${embed.id}&rel=0&modestbranding=1&controls=1&playsinline=1`;
+    iframeSrc = `https://www.youtube.com/embed/${embed.id}?autoplay=1&mute=1&loop=1&playlist=${embed.id}&enablejsapi=1&rel=0&modestbranding=1&controls=1&playsinline=1`;
   } else if (embed.kind === "vimeo") {
     iframeSrc = `https://player.vimeo.com/video/${embed.id}?autoplay=1&muted=1&loop=1&title=0&byline=0&portrait=0`;
   }
+
+  // Detect when a YouTube clip finishes by watching the IFrame API's
+  // infoDelivery messages: when currentTime jumps backward, the video has
+  // looped — that's our "ended" signal. We also still listen for
+  // onStateChange=0 in case YouTube fires it before wrapping.
+  const youtubeId = embed.kind === "youtube" ? embed.id : null;
+  useEffect(() => {
+    if (paused) return;
+    if (!youtubeId) return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    let lastTime: number | null = null;
+    let advanced = false;
+
+    const sendCommand = (cmd: Record<string, unknown>) => {
+      iframe.contentWindow?.postMessage(JSON.stringify(cmd), "*");
+    };
+    const subscribe = () => {
+      sendCommand({ event: "listening", id: youtubeId });
+      sendCommand({
+        event: "command",
+        func: "addEventListener",
+        args: ["onStateChange"],
+        id: youtubeId,
+      });
+    };
+    const triggerAdvance = () => {
+      if (advanced) return;
+      advanced = true;
+      onEndedRef.current();
+    };
+    const onMessage = (e: MessageEvent) => {
+      if (typeof e.data !== "string") return;
+      if (!e.origin.includes("youtube")) return;
+      try {
+        const payload = JSON.parse(e.data);
+        // Natural end (rare with loop=1, but harmless to listen for)
+        if (payload?.event === "onStateChange" && payload.info === 0) {
+          triggerAdvance();
+          return;
+        }
+        // YouTube fires infoDelivery messages with currentTime every ~250ms
+        // once the listening handshake completes. A large backward jump means
+        // the loop just wrapped — advance to the next clip.
+        if (payload?.event === "infoDelivery" && typeof payload?.info?.currentTime === "number") {
+          const t = payload.info.currentTime;
+          if (lastTime !== null && t < lastTime - 2) {
+            triggerAdvance();
+          }
+          lastTime = t;
+        }
+      } catch {
+        // not JSON — ignore
+      }
+    };
+
+    window.addEventListener("message", onMessage);
+    iframe.addEventListener("load", subscribe);
+    // The iframe may have already loaded by the time this effect attaches its
+    // listener, in which case the `load` event won't fire again. Hand-shake a
+    // second time after a beat to cover that race.
+    const t = setTimeout(subscribe, 1000);
+
+    return () => {
+      window.removeEventListener("message", onMessage);
+      iframe.removeEventListener("load", subscribe);
+      clearTimeout(t);
+    };
+  }, [youtubeId, paused]);
 
   // When paused (cycle done), keep the thumbnail visible and skip the play icon —
   // the parent overlays a "Play again" button on top instead.
@@ -166,6 +245,7 @@ function FeaturedPlayer({ clip, inView, paused, onEnded, onProgress }: FeaturedP
       {/* Iframe is unmounted when paused so YouTube/Vimeo stop streaming. */}
       {iframeSrc && !paused && (
         <iframe
+          ref={iframeRef}
           src={iframeSrc}
           className="absolute inset-0 w-full h-full border-0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -276,9 +356,12 @@ function MiniCard({ clip, onClick }: { clip: Clip; onClick: () => void }) {
 
 // ── HeroReel ──────────────────────────────────────────────────────────────────
 
-// We can't reliably detect when a YouTube/Vimeo iframe finishes playing without
-// loading their JS APIs, so we use a generous fallback timer for those.
-const IFRAME_FALLBACK_MS = 25_000;
+// Fallback timer durations for iframe embeds. YouTube reports end-of-video
+// in real time via the IFrame API (postMessage in FeaturedPlayer), so its
+// timer is just a long backstop. Vimeo has no such handshake here — keep it
+// tight so single-clip Vimeo highlights still advance.
+const YOUTUBE_FALLBACK_MS = 180_000;
+const VIMEO_FALLBACK_MS = 25_000;
 const TICK_MS = 100;
 
 const FALLBACK_CAT_ORDER = ["goals", "assists", "dribbling", "movement", "pressing", "physical"];
@@ -296,6 +379,10 @@ export default function HeroReel() {
   const sectionRef = useRef<HTMLElement>(null);
 
   // Track whether the reel is visible — pause playback + rotation when offscreen.
+  // Re-run on clips.length so the observer actually attaches: the section is
+  // unmounted (early `return null`) while clips=[], meaning sectionRef.current is
+  // null on first effect run. Without this dep, inView stays false forever and
+  // the YouTube fallback timer never fires.
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
@@ -305,7 +392,7 @@ export default function HeroReel() {
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, []);
+  }, [clips.length]);
 
   // Load clips: prefer curated reel, fall back to top 6 by category order
   useEffect(() => {
@@ -361,10 +448,11 @@ export default function HeroReel() {
     if (!inView || cycleDone) return;
     if (featuredKind !== "youtube" && featuredKind !== "vimeo") return;
 
+    const fallbackMs = featuredKind === "youtube" ? YOUTUBE_FALLBACK_MS : VIMEO_FALLBACK_MS;
     let step = 0;
     const id = setInterval(() => {
       step += 1;
-      const total = IFRAME_FALLBACK_MS / TICK_MS;
+      const total = fallbackMs / TICK_MS;
       if (step >= total) {
         advance();
         step = 0;
