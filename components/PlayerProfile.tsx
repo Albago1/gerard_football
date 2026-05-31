@@ -5,6 +5,7 @@ import { useLang } from "@/lib/i18n";
 const CLUBS = [
   { name: "KF Tirana",         ageGroups: ["U13", "U15"], initials: "KFT", color: "#ef4444", logo: "/clubs/kf-tirana.png" },
   { name: "Blau Weiss Berlin", ageGroups: ["U15"],         initials: "BWB", color: "#3b82f6", logo: "/clubs/blau-weiss-berlin.png" },
+  { name: "CFC Hertha 06",     ageGroups: ["U16", "U17"], initials: "CFC", color: "#0ea5e9", logo: "/clubs/cfc_hertha_06.png" },
   { name: "Berliner SC",       ageGroups: ["U17", "U18"], initials: "BSC", color: "#818cf8", logo: "/clubs/berliner-sc.png" },
   { name: "SC Staaken",        ageGroups: ["U18", "U19"], initials: "SCS", color: "#e11d48", logo: "/clubs/sc-staaken.png" },
 ];
